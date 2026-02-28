@@ -1,98 +1,78 @@
-# Expedientes Especialidad (UCB) — Gestión de expedientes legales con ABAC, trazabilidad y Clean Architecture
+# Legal Case Management — Expedientes, ABAC y Trazabilidad
 
-Repositorio del **Proyecto de Especialidad Full Stack** orientado a la **gestión digital de expedientes legales**, integrando:
+Plataforma full‑stack para **gestión de expedientes legales**, diseñada con **Clean Architecture**, **control de acceso basado en atributos (ABAC)** y **t trazabilidad/auditoría criptográficamente verificable**.
 
-- **Control de acceso basado en atributos (ABAC)** (autorización contextual)
-- **Trazabilidad / auditoría criptográficamente verificable** (encadenamiento hash)
-- **Clean Architecture** (capas, inversión de dependencias, testabilidad)
-
-> **Enfoque del módulo:** desarrollo funcional en local (backend + frontend + BD) y documentación de resultados. Despliegue cloud, CI/CD y pruebas a gran escala se trabajan en la fase de tutoría.
-
----
-
-## 1) Objetivo del proyecto
-
-Diseñar y desarrollar un modelo de sistema full stack para **gestión de expedientes legales** que fortalezca:
-
-- **Integridad** de los registros
-- **Autenticidad** de las actuaciones y documentos
-- **Auditabilidad** y **trazabilidad** verificables
+- ✅ Gestión de expedientes, actuaciones y documentos
+- ✅ Autenticación (JWT) y autorización ABAC (OPA o Casbin)
+- ✅ Auditoría completa (allow/deny) con **encadenamiento hash**
+- ✅ Backend desacoplado y testeable (Clean Architecture)
+- ✅ Frontend moderno (React + TypeScript)
 
 ---
 
-## 2) Alcance del módulo (Sesiones 1–6)
+## Tabla de contenidos
 
-Incluye:
-
-- **Backend (Node.js/Express + PostgreSQL)** con **Clean Architecture**:
-  - Autenticación (login) y gestión de usuarios
-  - CRUD de expedientes y sus componentes (**actuaciones** y **documentos**)
-  - ABAC aplicado por caso de uso / endpoint
-  - Auditoría/trazabilidad por operación con **encadenamiento hash**
-- **Frontend (React + TypeScript)**:
-  - Login
-  - Dashboard
-  - Listado/búsqueda de expedientes
-  - Detalle de expediente (actuaciones/documentos)
-  - Vista de trazabilidad (historial de auditoría)
-- **Integración end-to-end** (frontend + backend + BD) y validación de flujos en local
-- **Documentación** (Resultados, Conclusiones, Recomendaciones) y este README
-
-Excluye (en este módulo):
-- Despliegue en la nube
-- CI/CD
-- Pruebas unitarias/integración completas (se abordan en tutoría)
+- [Características](#características)
+- [Arquitectura](#arquitectura)
+- [Estructura del repositorio](#estructura-del-repositorio)
+- [Requisitos](#requisitos)
+- [Ejecución en local](#ejecución-en-local)
+- [Variables de entorno](#variables-de-entorno)
+- [ABAC](#abac)
+- [Trazabilidad](#trazabilidad)
+- [API](#api)
+- [Calidad](#calidad)
+- [Seguridad](#seguridad)
+- [Roadmap](#roadmap)
+- [Licencia](#licencia)
 
 ---
 
-## 3) Stack tecnológico
+## Características
 
-- **Frontend:** React + TypeScript  
-- **Backend:** Node.js + Express *(recomendado: TypeScript para contratos + DTOs + tipado de casos de uso)*  
-- **Base de datos:** PostgreSQL  
-- **Auth:** JWT  
-- **ABAC (motor de políticas):** OPA o Casbin  
-- **Trazabilidad:** SHA-256 (crypto de Node) + encadenamiento de auditoría
+### Gestión legal
+- **Expedientes**: alta, edición, estados (abierto/cerrado/archivado), clasificación (público/reservado/confidencial)
+- **Actuaciones**: registro cronológico de acciones/procesos dentro del expediente
+- **Documentos**: adjuntos y metadatos (tipo, fecha, relación a actuación)
 
----
+### Seguridad (ABAC + JWT)
+- Autenticación con **JWT**
+- Autorización ABAC por:
+  - asignación a expediente
+  - oficina/área
+  - nivel de confidencialidad
+  - estado del expediente
+  - contexto (hora, canal, IP, etc. si aplica)
 
-## 4) Arquitectura: Clean Architecture
-
-### 4.1 Principios
-
-- **Las dependencias apuntan hacia adentro**: Presentation → Infrastructure → Application → Domain
-- **Domain no depende de nada** (frameworks, BD, libs)
-- **Application define los casos de uso** y depende de **interfaces** (ports)
-- **Infrastructure implementa** esas interfaces (adapters): repositorios DB, ABAC engine, hashing, storage, etc.
-- **Presentation** (Express) adapta HTTP ↔ casos de uso (controllers/routes/middlewares)
-
-### 4.2 Capas y responsabilidades
-
-**Domain**
-- Entidades: `Expediente`, `Actuacion`, `Documento`, `Usuario`
-- Reglas del negocio (invariantes): por ejemplo, estados válidos, clasificación, etc.
-
-**Application**
-- Casos de uso: `CreateExpediente`, `AddActuacion`, `AttachDocumento`, `GetExpedienteDetail`, `GetAuditTrail`
-- DTOs de entrada/salida (Request/Response Models)
-- Interfaces (ports): `ExpedienteRepository`, `AuditRepository`, `PolicyEngine`, `Hasher`, `Clock`, etc.
-
-**Infrastructure**
-- Implementaciones: `PostgresExpedienteRepository`, `PostgresAuditRepository`
-- ABAC adapter: `OpaPolicyEngine` / `CasbinPolicyEngine`
-- Hashing: `Sha256Hasher`
-- Mappers / ORMs / migraciones (si aplica)
-
-**Presentation**
-- Express: rutas, controladores, validaciones de request
-- Autenticación (JWT middleware)
-- Manejo de errores y logging
+### Auditoría y trazabilidad verificable
+- Registro de eventos por operación (CRUD y acceso)
+- Registro de **decisión ABAC** (allow/deny) + motivo
+- **Encadenamiento hash** (SHA-256) para detectar alteraciones
 
 ---
 
-## 5) Estructura sugerida del repositorio (Clean Architecture)
+## Arquitectura
 
-> Ajusta los nombres si tu implementación difiere.
+Este proyecto adopta **Clean Architecture**:
+
+- **Domain**: entidades y reglas del negocio (sin dependencias externas)
+- **Application**: casos de uso, DTOs y puertos (interfaces)
+- **Infrastructure**: implementaciones (PostgreSQL, ABAC engine, hashing, storage)
+- **Presentation**: API HTTP (Express) + validación + middlewares
+
+Flujo de dependencias (siempre hacia adentro):
+
+```
+Presentation -> Infrastructure -> Application -> Domain
+```
+
+> La infraestructura **nunca** se usa directamente desde los casos de uso: se inyecta por interfaces (ports), facilitando testeo y reemplazo de implementaciones.
+
+---
+
+## Estructura del repositorio
+
+> Ajusta nombres si tu implementación difiere.
 
 ```
 .
@@ -112,15 +92,14 @@ Excluye (en este módulo):
 │  │  │  ├─ policy/                # OPA/Casbin adapters
 │  │  │  └─ crypto/                # hashing implementation
 │  │  ├─ presentation/
-│  │  │  ├─ http/
-│  │  │  │  ├─ routes/
-│  │  │  │  ├─ controllers/
-│  │  │  │  ├─ middlewares/
-│  │  │  │  └─ validators/
-│  │  │  └─ server.ts|server.js
+│  │  │  └─ http/
+│  │  │     ├─ routes/
+│  │  │     ├─ controllers/
+│  │  │     ├─ middlewares/
+│  │  │     └─ validators/
 │  │  └─ main/
-│  │     ├─ di/                    # wiring: dependency injection
-│  │     └─ app.ts                 # bootstrap
+│  │     ├─ di/                    # wiring / dependency injection
+│  │     └─ app.ts|app.js          # bootstrap
 │  ├─ .env.example
 │  └─ package.json
 ├─ frontend/
@@ -132,106 +111,52 @@ Excluye (en este módulo):
 │  ├─ .env.example
 │  └─ package.json
 └─ docs/
-   ├─ resultados.md
-   ├─ conclusiones.md
-   └─ recomendaciones.md
+   ├─ api.md                       # (opcional) especificación endpoints
+   ├─ arquitectura.md              # (opcional) decisiones técnicas
+   └─ seguridad.md                 # (opcional) políticas, amenazas, hardening
 ```
 
 ---
 
-## 6) Funcionalidades clave
+## Requisitos
 
-### 6.1 Flujos requeridos (demo)
-
-**Flujo 1**
-1. Login
-2. Listado de expedientes
-3. Ver detalle del expediente
-4. Consultar documentos/actuaciones + historial de trazabilidad (**según decisión ABAC**)
-
-**Flujo 2**
-1. Login
-2. Crear expediente
-3. Registrar actuación y/o adjuntar documento
-4. Ver trazabilidad generada (auditoría + hash/encadenamiento) por cada acción
-
----
-
-## 7) Control de acceso ABAC (resumen)
-
-ABAC toma decisiones evaluando **atributos** (sujeto, recurso, entorno). En el dominio legal permite reglas granulares por **confidencialidad, asignación y estado del expediente**.
-
-### 7.1 Atributos sugeridos
-
-**Sujeto (usuario)**
-- `id`, `role` (abogado, asistente, admin)
-- `oficinaId`
-- `casesAssigned` (asignaciones)
-- `clearanceLevel` (nivel de confidencialidad)
-
-**Objeto (recurso)**
-- `expedienteId`
-- `classification` (público / reservado / confidencial)
-- `estado` (abierto / cerrado / archivado)
-- `ownerOficinaId`
-
-**Entorno**
-- `hora`, `ip`, `canal` (web), `motivo` (si aplica)
-
-### 7.2 Recomendación de diseño (Clean Architecture + ABAC)
-
-- La **decisión ABAC** debería ejecutarse en Application (caso de uso), usando un **port** (`PolicyEngine`) e inyectando su implementación desde Infrastructure.
-- Registrar **allow/deny** en auditoría, incluyendo el **motivo** de la política.
-
----
-
-## 8) Trazabilidad criptográficamente verificable (resumen)
-
-Cada operación relevante genera un **evento de auditoría**.
-
-### 8.1 Encadenamiento hash (idea)
-
-Para cada evento:
-
-- `prevHash`: hash del evento anterior
-- `payloadCanonical`: serialización canónica del evento (orden estable de campos)
-- `eventHash = sha256(prevHash + payloadCanonical)`
-
-Esto ayuda a detectar alteraciones retrospectivas del historial.
-
-### 8.2 Campos sugeridos de auditoría
-
-- `eventId`
-- `timestamp`
-- `actorUserId`
-- `action` (CRUD + tipo)
-- `resourceType` (expediente/documento/actuacion)
-- `resourceId`
-- `decision` (allow/deny + motivo ABAC)
-- `prevHash`
-- `hash`
-
----
-
-## 9) Instalación y ejecución en local
-
-> Los comandos exactos dependen de tu implementación; esto es una guía base.
-
-### 9.1 Requisitos
-- Node.js (LTS recomendado)
-- PostgreSQL 14+ (recomendado)
+- Node.js **LTS** (recomendado)
+- PostgreSQL **14+**
 - npm / pnpm / yarn
 
-### 9.2 Backend
+Opcional:
+- OPA (Open Policy Agent) si usarás políticas externas
+- Docker / Docker Compose para levantar BD y servicios
+
+---
+
+## Ejecución en local
+
+### 1) Base de datos
+
+Crea una base de datos en PostgreSQL:
+
+```sql
+CREATE DATABASE expedientes;
+```
+
+Si usas Docker (opcional), define un `docker-compose.yml` con Postgres y credenciales (no incluido aquí).
+
+### 2) Backend
+
 ```bash
 cd backend
 cp .env.example .env
 npm install
-# (si aplica) migraciones / schema
+
+# Migraciones / schema (si aplica)
+# npm run migrate
+
 npm run dev
 ```
 
-### 9.3 Frontend
+### 3) Frontend
+
 ```bash
 cd frontend
 cp .env.example .env
@@ -239,51 +164,155 @@ npm install
 npm run dev
 ```
 
-### 9.4 Variables de entorno (ejemplo recomendado)
+Luego abre el frontend y autentícate con un usuario válido (si tienes seed, ejecútalo).
 
-**backend/.env.example**
+---
+
+## Variables de entorno
+
+### backend/.env.example
+
 ```env
 PORT=4000
 DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/expedientes
+
 JWT_SECRET=change_me
+
+# ABAC: motor de políticas
 ABAC_ENGINE=opa   # opa | casbin
+OPA_URL=http://localhost:8181  # si ABAC_ENGINE=opa
+
+# Auditoría / trazabilidad
 AUDIT_HASH_ALGO=sha256
 ```
 
-**frontend/.env.example**
+### frontend/.env.example
+
 ```env
 VITE_API_URL=http://localhost:4000
 ```
 
 ---
 
-## 10) Semillas (seed) y usuarios demo
+## ABAC
 
-Recomendación:
-- incluir `npm run seed` (si aplica) con:
-  - usuarios y atributos ABAC
-  - expedientes en distintos estados/clasificación
-  - auditoría inicial para validar el encadenamiento
+ABAC decide permisos evaluando **atributos** del sujeto, recurso y entorno.
+
+### Atributos sugeridos
+
+**Sujeto (usuario)**
+- `id`, `role` (abogado, asistente, admin)
+- `oficinaId`
+- `clearanceLevel`
+- asignaciones a expediente (relación)
+
+**Recurso (expediente/documento/actuación)**
+- `classification` (público/reservado/confidencial)
+- `estado` (abierto/cerrado/archivado)
+- `ownerOficinaId`
+- `assignedUserIds`
+
+**Entorno**
+- hora, canal, IP (si aplica)
+
+### Recomendación de diseño (Clean Architecture)
+
+- La decisión ABAC se invoca en **Application (caso de uso)** mediante un **port**:
+  - `PolicyEngine.evaluate(subject, resource, action, context)`
+- La implementación vive en **Infrastructure** (OPA/Casbin) y se inyecta desde `main/di`.
+
+> Importante: registrar en auditoría **allow/deny** + el motivo de la decisión.
 
 ---
 
-## 11) Documentación del módulo
+## Trazabilidad
 
-En `docs/`:
+Cada acción relevante genera un evento de auditoría.
 
-- **Resultados:** evidencia de cumplimiento + capturas/tabla de verificación
-- **Conclusiones:** aporte de ABAC y trazabilidad + hallazgos técnicos
-- **Recomendaciones:** pasos para fase de tutoría (pruebas, hardening, observabilidad, etc.)
+### Encadenamiento hash (SHA-256)
+
+Para cada evento:
+
+- `prevHash`: hash del evento anterior
+- `payloadCanonical`: serialización canónica del evento (orden estable de campos)
+- `hash = sha256(prevHash + payloadCanonical)`
+
+Esto ayuda a detectar:
+- modificaciones retroactivas
+- inserciones/eliminaciones en el historial
+
+### Campos sugeridos de auditoría
+
+- `eventId`
+- `timestamp`
+- `actorUserId`
+- `action`
+- `resourceType`
+- `resourceId`
+- `abacDecision` (allow/deny)
+- `abacReason`
+- `prevHash`
+- `hash`
 
 ---
 
-## 12) Autor
+## API
 
-**Wilfredo Marcelino Yupanqui Villagaray**  
-Proyecto de Especialidad — UCB (2026)
+> Documenta endpoints concretos en `docs/api.md` o genera OpenAPI/Swagger si lo deseas.
+
+Convención sugerida (REST):
+
+- `POST /auth/login`
+- `GET /cases`
+- `POST /cases`
+- `GET /cases/:id`
+- `PATCH /cases/:id`
+- `POST /cases/:id/actuations`
+- `POST /cases/:id/documents`
+- `GET /cases/:id/audit-trail`
+
+Errores:
+- `401` no autenticado
+- `403` denegado por ABAC (registrar `deny` en auditoría)
+- `404` recurso inexistente
+- `422` validación
 
 ---
 
-## 13) Licencia
+## Calidad
 
-Pendiente de definir (por defecto: uso académico).
+Recomendaciones mínimas:
+
+- Lint + format (ESLint/Prettier)
+- Validación de requests (Zod/Joi/Yup)
+- Tests de casos de uso (Application) con puertos mockeados
+- Tests de integración de repositorios (Infrastructure) con Postgres
+- Logs estructurados (pino/winston) y trazas por request
+
+---
+
+## Seguridad
+
+- Nunca commitear `.env` (usar `.env.example`)
+- Rotar `JWT_SECRET` en producción
+- Sanitizar inputs y validar DTOs
+- Controlar tamaño de archivos adjuntos + tipo MIME
+- Registrar accesos/descargas sensibles en auditoría
+- Aplicar principio de mínimo privilegio en ABAC
+
+---
+
+## Roadmap
+
+- [ ] OpenAPI/Swagger (contrato formal)
+- [ ] Docker Compose (API + DB + OPA)
+- [ ] Seed oficial (usuarios/expedientes demo)
+- [ ] Pruebas unitarias e integración
+- [ ] Observabilidad (request-id, métricas, trazas)
+- [ ] Firma digital / sellado de tiempo (opcional, para robustecer evidencias)
+
+---
+
+## Licencia
+
+Pendiente. (Recomendado: MIT o Apache-2.0 según el objetivo del repositorio.)
