@@ -1,192 +1,153 @@
-# Legal Case Management — Expedientes, ABAC y Trazabilidad
+# Legal Case Management — Expedientes Legales con RBAC y Trazabilidad
 
-Plataforma full‑stack para **gestión de expedientes legales**, diseñada con **Clean Architecture**, **control de acceso basado en atributos (ABAC)** y **t trazabilidad/auditoría criptográficamente verificable**.
+Sistema full-stack para **gestión de expedientes legales** con **control de acceso basado en roles (RBAC)** y **trazabilidad/auditoría completa**.
 
-- ✅ Gestión de expedientes, actuaciones y documentos
-- ✅ Autenticación (JWT) y autorización ABAC (OPA o Casbin)
-- ✅ Auditoría completa (allow/deny) con **encadenamiento hash**
-- ✅ Backend desacoplado y testeable (Clean Architecture)
-- ✅ Frontend moderno (React + TypeScript)
-
----
-
-## Tabla de contenidos
-
-- [Características](#características)
-- [Arquitectura](#arquitectura)
-- [Estructura del repositorio](#estructura-del-repositorio)
-- [Requisitos](#requisitos)
-- [Ejecución en local](#ejecución-en-local)
-- [Variables de entorno](#variables-de-entorno)
-- [ABAC](#abac)
-- [Trazabilidad](#trazabilidad)
-- [API](#api)
-- [Calidad](#calidad)
-- [Seguridad](#seguridad)
-- [Roadmap](#roadmap)
-- [Licencia](#licencia)
+Proyecto académico basado en el documento *"Desarrollo de un sistema full stack orientado a la gestión de expedientes legales utilizando control de acceso y trazabilidad"* (2026).
 
 ---
 
 ## Características
 
-### Gestión legal
-- **Expedientes**: alta, edición, estados (abierto/cerrado/archivado), clasificación (público/reservado/confidencial)
-- **Actuaciones**: registro cronológico de acciones/procesos dentro del expediente
-- **Documentos**: adjuntos y metadatos (tipo, fecha, relación a actuación)
+### Gestión Legal
+- **Expedientes**: CRUD completo + búsqueda + control de estados (`ABIERTO` → `EN_TRAMITE` → `CERRADO` → `ARCHIVADO`)
+- **Actuaciones**: registro cronológico de acciones vinculadas al expediente
+- **Documentos**: adjuntos con metadatos, hash SHA-256 para verificación de integridad
 
-### Seguridad (ABAC + JWT)
-- Autenticación con **JWT**
-- Autorización ABAC por:
-  - asignación a expediente
-  - oficina/área
-  - nivel de confidencialidad
-  - estado del expediente
-  - contexto (hora, canal, IP, etc. si aplica)
+### Seguridad (RBAC + JWT)
+- Autenticación con JWT (access + refresh tokens)
+- Autorización RBAC por endpoint con matriz rol-permiso
+- Política "deny by default": todo endpoint requiere autenticación salvo `/auth/login` y `/health`
+- Hashing seguro de contraseñas con bcrypt
 
-### Auditoría y trazabilidad verificable
-- Registro de eventos por operación (CRUD y acceso)
-- Registro de **decisión ABAC** (allow/deny) + motivo
-- **Encadenamiento hash** (SHA-256) para detectar alteraciones
+### Auditoría y Trazabilidad
+- Registro automático de todas las acciones relevantes (interceptor)
+- Login éxito/fracaso, acceso denegado, CRUD, cambios de estado, descargas
+- Filtros por usuario, expediente, fecha, acción y resultado
+
+---
+
+## Stack Tecnológico
+
+| Capa | Tecnología |
+| --- | --- |
+| **Frontend** | React + TypeScript (Vite), Tailwind CSS, TanStack Query, Zustand, React Hook Form + Zod, React Router |
+| **Backend** | NestJS + TypeScript, Prisma ORM, JWT + bcrypt, OpenAPI/Swagger |
+| **Base de datos** | PostgreSQL 16 |
+| **DevOps** | Docker + docker-compose, GitHub Actions (CI/CD) |
+| **Calidad** | ESLint + Prettier, Jest/Vitest, Supertest |
 
 ---
 
 ## Arquitectura
 
-Este proyecto adopta **Clean Architecture**:
-
-- **Domain**: entidades y reglas del negocio (sin dependencias externas)
-- **Application**: casos de uso, DTOs y puertos (interfaces)
-- **Infrastructure**: implementaciones (PostgreSQL, ABAC engine, hashing, storage)
-- **Presentation**: API HTTP (Express) + validación + middlewares
-
-Flujo de dependencias (siempre hacia adentro):
+Arquitectura por capas con separación de responsabilidades:
 
 ```
-Presentation -> Infrastructure -> Application -> Domain
+Presentación (UI)  →  API (Controllers)  →  Aplicación (Casos de uso)  →  Dominio (Entidades)  →  Infraestructura (DB/Storage)
+                                    ↕ Cross-cutting: Auth/RBAC, Auditoría, Observabilidad
 ```
-
-> La infraestructura **nunca** se usa directamente desde los casos de uso: se inyecta por interfaces (ports), facilitando testeo y reemplazo de implementaciones.
 
 ---
 
 ## Estructura del repositorio
 
-> Ajusta nombres si tu implementación difiere.
-
 ```
-.
-├─ backend/
-│  ├─ src/
-│  │  ├─ domain/
-│  │  │  ├─ entities/
-│  │  │  ├─ value-objects/
-│  │  │  └─ errors/
-│  │  ├─ application/
-│  │  │  ├─ use-cases/
-│  │  │  ├─ dtos/
-│  │  │  └─ ports/                 # interfaces (repos, policy, hashing, etc.)
-│  │  ├─ infrastructure/
-│  │  │  ├─ db/                    # postgres client, migrations
-│  │  │  ├─ repositories/          # implements ports
-│  │  │  ├─ policy/                # OPA/Casbin adapters
-│  │  │  └─ crypto/                # hashing implementation
-│  │  ├─ presentation/
-│  │  │  └─ http/
-│  │  │     ├─ routes/
-│  │  │     ├─ controllers/
-│  │  │     ├─ middlewares/
-│  │  │     └─ validators/
-│  │  └─ main/
-│  │     ├─ di/                    # wiring / dependency injection
-│  │     └─ app.ts|app.js          # bootstrap
-│  ├─ .env.example
-│  └─ package.json
-├─ frontend/
-│  ├─ src/
-│  │  ├─ app/                      # routing, providers
-│  │  ├─ features/                 # expedientes, auth, auditoria
-│  │  ├─ shared/                   # ui, hooks, utils, api client
-│  │  └─ main.tsx
-│  ├─ .env.example
-│  └─ package.json
-└─ docs/
-   ├─ api.md                       # (opcional) especificación endpoints
-   ├─ arquitectura.md              # (opcional) decisiones técnicas
-   └─ seguridad.md                 # (opcional) políticas, amenazas, hardening
+legal-case-mgmt/
+├── apps/
+│   ├── api/                    # Backend (NestJS + TypeScript)
+│   │   ├── src/
+│   │   │   ├── modules/        # auth, users, rbac, expedientes, actuaciones, documentos, auditoria, reportes, health
+│   │   │   └── shared/         # dto, errors, middleware, guards, interceptors, utils
+│   │   ├── prisma/             # schema + migraciones
+│   │   └── test/
+│   └── web/                    # Frontend (React + TypeScript + Vite)
+│       ├── src/
+│       │   ├── features/       # auth, expedientes, documentos, auditoria, admin
+│       │   ├── pages/
+│       │   ├── components/
+│       │   └── lib/            # helpers, api client, hooks
+│       └── public/
+├── packages/
+│   └── shared/                 # Tipos y contratos compartidos (DTOs, enums)
+├── scripts/
+│   └── db/                     # seed, reset
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+├── docker-compose.yml
+├── .env.example
+├── .editorconfig
+└── package.json                # Monorepo (npm workspaces)
 ```
 
 ---
 
 ## Requisitos
 
-- Node.js **LTS** (recomendado)
-- PostgreSQL **14+**
-- npm / pnpm / yarn
-
-Opcional:
-- OPA (Open Policy Agent) si usarás políticas externas
-- Docker / Docker Compose para levantar BD y servicios
+- **Node.js** >= 20 (LTS)
+- **PostgreSQL** 16+
+- **npm** >= 10
+- **Docker** + Docker Compose (opcional, recomendado)
 
 ---
 
 ## Ejecución en local
 
-### 1) Base de datos
-
-Crea una base de datos en PostgreSQL:
-
-```sql
-CREATE DATABASE expedientes;
-```
-
-Si usas Docker (opcional), define un `docker-compose.yml` con Postgres y credenciales (no incluido aquí).
-
-### 2) Backend
+### 1. Clonar y configurar
 
 ```bash
-cd backend
+git clone <repo-url>
+cd expedientes-especialidad
 cp .env.example .env
-npm install
-
-# Migraciones / schema (si aplica)
-# npm run migrate
-
-npm run dev
 ```
 
-### 3) Frontend
+### 2. Levantar base de datos con Docker
 
 ```bash
-cd frontend
-cp .env.example .env
-npm install
-npm run dev
+docker compose up -d db
 ```
 
-Luego abre el frontend y autentícate con un usuario válido (si tienes seed, ejecútalo).
+### 3. Backend
+
+```bash
+# Instalar dependencias (desde la raíz del monorepo)
+npm install
+
+# Ejecutar migraciones
+npm run db:migrate
+
+# Seed de datos iniciales (roles, permisos, usuario admin)
+npm run db:seed
+
+# Iniciar en modo desarrollo
+npm run dev:api
+```
+
+La API estará disponible en `http://localhost:4000` y Swagger en `http://localhost:4000/docs`.
+
+### 4. Frontend
+
+```bash
+npm run dev:web
+```
+
+La aplicación estará disponible en `http://localhost:5173`.
 
 ---
 
 ## Variables de entorno
 
-### backend/.env.example
+### apps/api/.env
 
 ```env
 PORT=4000
-DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/expedientes
-
-JWT_SECRET=change_me
-
-# ABAC: motor de políticas
-ABAC_ENGINE=opa   # opa | casbin
-OPA_URL=http://localhost:8181  # si ABAC_ENGINE=opa
-
-# Auditoría / trazabilidad
-AUDIT_HASH_ALGO=sha256
+DATABASE_URL=postgresql://expedientes:expedientes@localhost:5432/expedientes
+JWT_SECRET=change_me_in_production
+JWT_EXPIRATION=15m
+JWT_REFRESH_EXPIRATION=7d
 ```
 
-### frontend/.env.example
+### apps/web/.env
 
 ```env
 VITE_API_URL=http://localhost:4000
@@ -194,125 +155,92 @@ VITE_API_URL=http://localhost:4000
 
 ---
 
-## ABAC
+## Endpoints principales (API REST)
 
-ABAC decide permisos evaluando **atributos** del sujeto, recurso y entorno.
+### Auth
+- `POST /auth/login` — Iniciar sesión
+- `POST /auth/refresh` — Refrescar token
+- `POST /auth/logout` — Cerrar sesión
+- `GET /auth/me` — Usuario actual
 
-### Atributos sugeridos
+### Usuarios / RBAC
+- `GET /users` — Listar usuarios (admin)
+- `POST /users` — Crear usuario (admin)
+- `PATCH /users/:id` — Editar usuario (admin)
+- `GET /roles` — Listar roles (admin)
+- `PUT /roles/:id/permissions` — Asignar permisos (admin)
 
-**Sujeto (usuario)**
-- `id`, `role` (abogado, asistente, admin)
-- `oficinaId`
-- `clearanceLevel`
-- asignaciones a expediente (relación)
+### Expedientes
+- `GET /expedientes` — Listar con filtros (estado, búsqueda, fechas)
+- `POST /expedientes` — Crear expediente
+- `GET /expedientes/:id` — Detalle
+- `PATCH /expedientes/:id` — Editar
+- `POST /expedientes/:id/cambiar-estado` — Transición de estado
 
-**Recurso (expediente/documento/actuación)**
-- `classification` (público/reservado/confidencial)
-- `estado` (abierto/cerrado/archivado)
-- `ownerOficinaId`
-- `assignedUserIds`
+### Actuaciones
+- `POST /expedientes/:id/actuaciones` — Registrar actuación
+- `GET /expedientes/:id/actuaciones` — Listar actuaciones
 
-**Entorno**
-- hora, canal, IP (si aplica)
+### Documentos
+- `POST /expedientes/:id/documentos` — Subir documento (multipart)
+- `GET /expedientes/:id/documentos` — Listar documentos
+- `GET /documentos/:id/download` — Descargar documento
 
-### Recomendación de diseño (Clean Architecture)
-
-- La decisión ABAC se invoca en **Application (caso de uso)** mediante un **port**:
-  - `PolicyEngine.evaluate(subject, resource, action, context)`
-- La implementación vive en **Infrastructure** (OPA/Casbin) y se inyecta desde `main/di`.
-
-> Importante: registrar en auditoría **allow/deny** + el motivo de la decisión.
-
----
-
-## Trazabilidad
-
-Cada acción relevante genera un evento de auditoría.
-
-### Encadenamiento hash (SHA-256)
-
-Para cada evento:
-
-- `prevHash`: hash del evento anterior
-- `payloadCanonical`: serialización canónica del evento (orden estable de campos)
-- `hash = sha256(prevHash + payloadCanonical)`
-
-Esto ayuda a detectar:
-- modificaciones retroactivas
-- inserciones/eliminaciones en el historial
-
-### Campos sugeridos de auditoría
-
-- `eventId`
-- `timestamp`
-- `actorUserId`
-- `action`
-- `resourceType`
-- `resourceId`
-- `abacDecision` (allow/deny)
-- `abacReason`
-- `prevHash`
-- `hash`
+### Auditoría / Reportes
+- `GET /audit` — Consultar bitácora (filtros por usuario, expediente, fecha, acción)
+- `GET /reportes/estados` — Reporte por estados
+- `GET /reportes/actividad` — Reporte de actividad
 
 ---
 
-## API
+## Modelo de datos
 
-> Documenta endpoints concretos en `docs/api.md` o genera OpenAPI/Swagger si lo deseas.
+Tablas principales:
 
-Convención sugerida (REST):
-
-- `POST /auth/login`
-- `GET /cases`
-- `POST /cases`
-- `GET /cases/:id`
-- `PATCH /cases/:id`
-- `POST /cases/:id/actuations`
-- `POST /cases/:id/documents`
-- `GET /cases/:id/audit-trail`
-
-Errores:
-- `401` no autenticado
-- `403` denegado por ABAC (registrar `deny` en auditoría)
-- `404` recurso inexistente
-- `422` validación
-
----
-
-## Calidad
-
-Recomendaciones mínimas:
-
-- Lint + format (ESLint/Prettier)
-- Validación de requests (Zod/Joi/Yup)
-- Tests de casos de uso (Application) con puertos mockeados
-- Tests de integración de repositorios (Infrastructure) con Postgres
-- Logs estructurados (pino/winston) y trazas por request
+- **usuario** — Usuarios del sistema
+- **rol** / **permiso** / **rol_permiso** — RBAC
+- **usuario_rol** — Asignación usuario-rol
+- **expediente** — Expedientes legales con estados controlados
+- **actuacion** — Acciones vinculadas a expedientes
+- **documento** — Archivos adjuntos con hash SHA-256
+- **audit_log** — Bitácora de auditoría
 
 ---
 
 ## Seguridad
 
-- Nunca commitear `.env` (usar `.env.example`)
-- Rotar `JWT_SECRET` en producción
-- Sanitizar inputs y validar DTOs
-- Controlar tamaño de archivos adjuntos + tipo MIME
-- Registrar accesos/descargas sensibles en auditoría
-- Aplicar principio de mínimo privilegio en ABAC
+Controles alineados a OWASP:
+
+- **A01 Broken Access Control**: RBAC en servidor, deny-by-default, pruebas negativas
+- **A02 Cryptographic Failures**: contraseñas con bcrypt, JWT secrets en `.env`, TLS
+- **A03 Injection**: ORM (Prisma) + consultas parametrizadas + validación con class-validator/Zod
+- **A09 Logging & Monitoring**: auditoría estructurada en base de datos
+- Rate limiting en login, CORS estricto, headers de seguridad (helmet)
 
 ---
 
-## Roadmap
+## Plan de implementación
 
-- [ ] OpenAPI/Swagger (contrato formal)
-- [ ] Docker Compose (API + DB + OPA)
-- [ ] Seed oficial (usuarios/expedientes demo)
-- [ ] Pruebas unitarias e integración
-- [ ] Observabilidad (request-id, métricas, trazas)
-- [ ] Firma digital / sellado de tiempo (opcional, para robustecer evidencias)
+| Fase | Alcance | Progreso |
+| --- | --- | --- |
+| **Fase 0** — Preparación | Repo, Docker, CI, estándares | 0% → 10% |
+| **Fase 1** — Modelado | Schema Prisma, migraciones, seed | 10% → 25% |
+| **Fase 2** — Backend base | Auth, JWT, estructura modular, Swagger | 25% → 45% |
+| **Fase 3** — RBAC + Auditoría | Guards, interceptor auditoría, deny-by-default | 45% → 60% |
+| **Fase 4** — Dominio | Expedientes, actuaciones, documentos, estados | 60% → 80% |
+| **Fase 5** — Frontend | Login, dashboard, CRUD, admin, bitácora | 80% → 92% |
+| **Fase 6** — QA + Deploy | Reportes, tests, performance, CD, docs | 92% → 100% |
+
+---
+
+## Convenciones
+
+- **Commits**: Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`)
+- **Branching**: feature branches → PR → `develop` → `main`
+- **Versionado**: tags semánticos (`v0.1.0`, `v0.2.0`, ...)
 
 ---
 
 ## Licencia
 
-Pendiente. (Recomendado: MIT o Apache-2.0 según el objetivo del repositorio.)
+Pendiente.

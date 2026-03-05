@@ -1,0 +1,26 @@
+{
+  "name": "legal-case-mgmt",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sistema full stack para gestión de expedientes legales con RBAC y trazabilidad",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm -w apps/api run start:dev",
+    "dev:web": "npm -w apps/web run dev",
+    "build:api": "npm -w apps/api run build",
+    "build:web": "npm -w apps/web run build",
+    "lint": "npm -w apps/api run lint && npm -w apps/web run lint",
+    "test": "npm -w apps/api run test && npm -w apps/web run test",
+    "db:migrate": "npm -w apps/api run prisma:migrate",
+    "db:seed": "npm -w apps/api run prisma:seed",
+    "db:reset": "npm -w apps/api run prisma:reset",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
