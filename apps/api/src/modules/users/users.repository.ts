@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma';
 import { Prisma, Usuario } from '@prisma/client';
-import { UsersRepositoryPort } from './users.repository.port';
+import {
+  FindUsersParams,
+  UserListItem,
+  UsersRepositoryPort,
+  UserWithRoles,
+} from './users.repository.port';
 
 @Injectable()
 export class UsersRepository implements UsersRepositoryPort {
@@ -19,7 +24,7 @@ export class UsersRepository implements UsersRepositoryPort {
     return this.prisma.usuario.findUnique({ where: { correo } });
   }
 
-  async findByIdWithRoles(id: string) {
+  async findByIdWithRoles(id: string): Promise<UserWithRoles | null> {
     return this.prisma.usuario.findUnique({
       where: { id },
       include: {
@@ -38,7 +43,7 @@ export class UsersRepository implements UsersRepositoryPort {
     });
   }
 
-  async findByCorreoWithRoles(correo: string) {
+  async findByCorreoWithRoles(correo: string): Promise<UserWithRoles | null> {
     return this.prisma.usuario.findUnique({
       where: { correo },
       include: {
@@ -57,11 +62,7 @@ export class UsersRepository implements UsersRepositoryPort {
     });
   }
 
-  async findAll(params?: {
-    skip?: number;
-    take?: number;
-    where?: Prisma.UsuarioWhereInput;
-  }): Promise<Usuario[]> {
+  async findAll(params?: FindUsersParams): Promise<UserListItem[]> {
     return this.prisma.usuario.findMany({
       ...params,
       include: {
@@ -78,9 +79,14 @@ export class UsersRepository implements UsersRepositoryPort {
   }
 
   async incrementTokenVersion(id: string): Promise<Usuario> {
+    const current = await this.prisma.usuario.findUnique({
+      where: { id },
+      select: { tokenVersion: true },
+    });
+
     return this.prisma.usuario.update({
       where: { id },
-      data: { tokenVersion: { increment: 1 } },
+      data: { tokenVersion: (current?.tokenVersion ?? 0) + 1 },
     });
   }
 

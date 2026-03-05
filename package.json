@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "npm run dev:api & npm run dev:web",
     "dev:api": "npm -w apps/api run start:dev",
     "dev:web": "npm -w apps/web run dev",
     "build:api": "npm -w apps/api run build",
