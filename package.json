@@ -18,9 +18,13 @@
     "db:seed": "npm -w apps/api run prisma:seed",
     "db:reset": "npm -w apps/api run prisma:reset",
     "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down"
+    "docker:down": "docker compose down",
+    "prepare": "husky"
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
   }
 }

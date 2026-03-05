@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma';
 import { Prisma, Documento } from '@prisma/client';
+import { DocumentosRepositoryPort } from './documentos.repository.port';
 
 @Injectable()
-export class DocumentosRepository {
+export class DocumentosRepository implements DocumentosRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(data: Prisma.DocumentoUncheckedCreateInput): Promise<Documento> {
@@ -12,6 +13,15 @@ export class DocumentosRepository {
 
   async findById(id: string): Promise<Documento | null> {
     return this.prisma.documento.findUnique({ where: { id } });
+  }
+
+  async findByIdAndExpediente(
+    id: string,
+    expedienteId: string,
+  ): Promise<Documento | null> {
+    return this.prisma.documento.findFirst({
+      where: { id, expedienteId },
+    });
   }
 
   async findByExpedienteId(

@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma';
 import { Prisma, Usuario } from '@prisma/client';
+import { UsersRepositoryPort } from './users.repository.port';
 
 @Injectable()
-export class UsersRepository {
+export class UsersRepository implements UsersRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(data: Prisma.UsuarioCreateInput): Promise<Usuario> {
@@ -74,6 +75,13 @@ export class UsersRepository {
 
   async update(id: string, data: Prisma.UsuarioUpdateInput): Promise<Usuario> {
     return this.prisma.usuario.update({ where: { id }, data });
+  }
+
+  async incrementTokenVersion(id: string): Promise<Usuario> {
+    return this.prisma.usuario.update({
+      where: { id },
+      data: { tokenVersion: { increment: 1 } },
+    });
   }
 
   async count(where?: Prisma.UsuarioWhereInput): Promise<number> {

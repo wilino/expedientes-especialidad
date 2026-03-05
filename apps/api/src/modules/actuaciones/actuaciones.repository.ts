@@ -1,13 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma';
 import { Prisma, Actuacion } from '@prisma/client';
+import { ActuacionesRepositoryPort } from './actuaciones.repository.port';
 
 @Injectable()
-export class ActuacionesRepository {
+export class ActuacionesRepository implements ActuacionesRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(data: Prisma.ActuacionUncheckedCreateInput): Promise<Actuacion> {
     return this.prisma.actuacion.create({ data });
+  }
+
+  async findByIdAndExpediente(
+    id: string,
+    expedienteId: string,
+  ): Promise<Actuacion | null> {
+    return this.prisma.actuacion.findFirst({
+      where: { id, expedienteId },
+    });
   }
 
   async findByExpedienteId(
@@ -27,5 +37,21 @@ export class ActuacionesRepository {
     ]);
 
     return { data, total };
+  }
+
+  async update(
+    id: string,
+    data: Prisma.ActuacionUpdateInput,
+  ): Promise<Actuacion> {
+    return this.prisma.actuacion.update({
+      where: { id },
+      data,
+    });
+  }
+
+  async remove(id: string): Promise<void> {
+    await this.prisma.actuacion.delete({
+      where: { id },
+    });
   }
 }

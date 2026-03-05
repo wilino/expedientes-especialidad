@@ -1,14 +1,22 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { UsersRepository } from './users.repository';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  Inject,
+} from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
+import { USERS_REPOSITORY, UsersRepositoryPort } from './users.repository.port';
 
 const SALT_ROUNDS = 12;
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly usersRepository: UsersRepository) {}
+  constructor(
+    @Inject(USERS_REPOSITORY)
+    private readonly usersRepository: UsersRepositoryPort,
+  ) {}
 
   async create(dto: CreateUserDto) {
     const existing = await this.usersRepository.findByCorreo(dto.correo);
@@ -45,6 +53,10 @@ export class UsersService {
     return user;
   }
 
+  async findByIdWithRolesOrNull(id: string) {
+    return this.usersRepository.findByIdWithRoles(id);
+  }
+
   async findByCorreoWithRoles(correo: string) {
     return this.usersRepository.findByCorreoWithRoles(correo);
   }
@@ -72,5 +84,10 @@ export class UsersService {
 
   async removeRole(usuarioId: string, rolId: string) {
     return this.usersRepository.removeRole(usuarioId, rolId);
+  }
+
+  async invalidateSessions(id: string) {
+    await this.findById(id);
+    return this.usersRepository.incrementTokenVersion(id);
   }
 }

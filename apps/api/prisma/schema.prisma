@@ -3,22 +3,23 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
 }
 
 // ── Usuarios y RBAC ────────────────────────────────────
 
 model Usuario {
-  id        String   @id @default(uuid())
-  nombre    String
-  correo    String   @unique
-  password  String
-  estado    Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  nombre       String
+  correo       String   @unique
+  password     String
+  estado       Boolean  @default(true)
+  tokenVersion Int      @default(0) @map("token_version")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   roles       UsuarioRol[]
-  expedientes Expediente[]   @relation("creador")
+  expedientes Expediente[] @relation("creador")
   actuaciones Actuacion[]
   documentos  Documento[]
   auditLogs   AuditLog[]
@@ -50,7 +51,7 @@ model Permiso {
 }
 
 model RolPermiso {
-  rolId    String @map("rol_id")
+  rolId     String @map("rol_id")
   permisoId String @map("permiso_id")
 
   rol     Rol     @relation(fields: [rolId], references: [id], onDelete: Cascade)
@@ -81,16 +82,16 @@ enum EstadoExpediente {
 }
 
 model Expediente {
-  id             String            @id @default(uuid())
-  codigo         String            @unique
-  caratula       String
-  estado         EstadoExpediente  @default(ABIERTO)
-  fechaApertura  DateTime          @default(now()) @map("fecha_apertura")
-  creadorId      String            @map("creador_id")
-  createdAt      DateTime          @default(now()) @map("created_at")
-  updatedAt      DateTime          @updatedAt @map("updated_at")
+  id            String           @id @default(uuid())
+  codigo        String           @unique
+  caratula      String
+  estado        EstadoExpediente @default(ABIERTO)
+  fechaApertura DateTime         @default(now()) @map("fecha_apertura")
+  creadorId     String           @map("creador_id")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
 
-  creador     Usuario      @relation("creador", fields: [creadorId], references: [id])
+  creador     Usuario     @relation("creador", fields: [creadorId], references: [id])
   actuaciones Actuacion[]
   documentos  Documento[]
   auditLogs   AuditLog[]
@@ -136,15 +137,15 @@ model Documento {
 // ── Auditoría ───────────────────────────────────────────
 
 model AuditLog {
-  id           String    @id @default(uuid())
-  usuarioId    String    @map("usuario_id")
-  expedienteId String?   @map("expediente_id")
+  id           String   @id @default(uuid())
+  usuarioId    String   @map("usuario_id")
+  expedienteId String?  @map("expediente_id")
   accion       String
   recurso      String
   resultado    String
   ip           String?
   payload      Json?
-  timestamp    DateTime  @default(now())
+  timestamp    DateTime @default(now())
 
   usuario    Usuario     @relation(fields: [usuarioId], references: [id])
   expediente Expediente? @relation(fields: [expedienteId], references: [id])

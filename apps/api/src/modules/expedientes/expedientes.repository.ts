@@ -1,12 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma';
 import { Prisma, Expediente, EstadoExpediente } from '@prisma/client';
+import {
+  ExpedientesRepositoryPort,
+  FindExpedientesParams,
+} from './expedientes.repository.port';
 
 @Injectable()
-export class ExpedientesRepository {
+export class ExpedientesRepository implements ExpedientesRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: Prisma.ExpedienteUncheckedCreateInput): Promise<Expediente> {
+  async create(
+    data: Prisma.ExpedienteUncheckedCreateInput,
+  ): Promise<Expediente> {
     return this.prisma.expediente.create({ data });
   }
 
@@ -24,14 +30,7 @@ export class ExpedientesRepository {
     return this.prisma.expediente.findUnique({ where: { codigo } });
   }
 
-  async findAll(params: {
-    skip?: number;
-    take?: number;
-    estado?: EstadoExpediente;
-    q?: string;
-    desde?: Date;
-    hasta?: Date;
-  }) {
+  async findAll(params: FindExpedientesParams) {
     const where: Prisma.ExpedienteWhereInput = {};
 
     if (params.estado) {
@@ -40,8 +39,8 @@ export class ExpedientesRepository {
 
     if (params.q) {
       where.OR = [
-        { codigo: { contains: params.q, mode: 'insensitive' } },
-        { caratula: { contains: params.q, mode: 'insensitive' } },
+        { codigo: { contains: params.q } },
+        { caratula: { contains: params.q } },
       ];
     }
 
@@ -69,11 +68,17 @@ export class ExpedientesRepository {
     return { data, total };
   }
 
-  async update(id: string, data: Prisma.ExpedienteUpdateInput): Promise<Expediente> {
+  async update(
+    id: string,
+    data: Prisma.ExpedienteUpdateInput,
+  ): Promise<Expediente> {
     return this.prisma.expediente.update({ where: { id }, data });
   }
 
-  async updateEstado(id: string, estado: EstadoExpediente): Promise<Expediente> {
+  async updateEstado(
+    id: string,
+    estado: EstadoExpediente,
+  ): Promise<Expediente> {
     return this.prisma.expediente.update({
       where: { id },
       data: { estado },

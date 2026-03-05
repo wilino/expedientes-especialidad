@@ -11,7 +11,7 @@ Proyecto académico basado en el documento *"Desarrollo de un sistema full stack
 ### Gestión Legal
 - **Expedientes**: CRUD completo + búsqueda + control de estados (`ABIERTO` → `EN_TRAMITE` → `CERRADO` → `ARCHIVADO`)
 - **Actuaciones**: registro cronológico de acciones vinculadas al expediente
-- **Documentos**: adjuntos con metadatos, hash SHA-256 para verificación de integridad
+- **Documentos**: adjuntos con metadatos, hash SHA-256, descarga y storage configurable (`local`/`s3`/`minio`)
 
 ### Seguridad (RBAC + JWT)
 - Autenticación con JWT (access + refresh tokens)
@@ -32,8 +32,8 @@ Proyecto académico basado en el documento *"Desarrollo de un sistema full stack
 | --- | --- |
 | **Frontend** | React + TypeScript (Vite), Tailwind CSS, TanStack Query, Zustand, React Hook Form + Zod, React Router |
 | **Backend** | NestJS + TypeScript, Prisma ORM, JWT + bcrypt, OpenAPI/Swagger |
-| **Base de datos** | PostgreSQL 16 |
-| **DevOps** | Docker + docker-compose, GitHub Actions (CI/CD) |
+| **Base de datos** | MySQL 8.4 |
+| **DevOps** | Docker + docker-compose, MinIO (S3 compatible), GitHub Actions (CI/CD) |
 | **Calidad** | ESLint + Prettier, Jest/Vitest, Supertest |
 
 ---
@@ -73,9 +73,12 @@ legal-case-mgmt/
 │   └── db/                     # seed, reset
 ├── .github/
 │   └── workflows/
-│       └── ci.yml
+│       ├── ci.yml
+│       └── cd.yml
 ├── docker-compose.yml
+├── docker-compose.prod.yml
 ├── .env.example
+├── .env.prod.example
 ├── .editorconfig
 └── package.json                # Monorepo (npm workspaces)
 ```
@@ -85,7 +88,7 @@ legal-case-mgmt/
 ## Requisitos
 
 - **Node.js** >= 20 (LTS)
-- **PostgreSQL** 16+
+- **MySQL** 8.4+
 - **npm** >= 10
 - **Docker** + Docker Compose (opcional, recomendado)
 
@@ -101,11 +104,17 @@ cd expedientes-especialidad
 cp .env.example .env
 ```
 
-### 2. Levantar base de datos con Docker
+### 2. Levantar infraestructura con Docker
 
 ```bash
-docker compose up -d db
+docker compose up -d db minio minio-init
 ```
+
+El contenedor inicializa automáticamente una base `prisma_migrate_shadow` para migraciones de Prisma.
+MinIO queda disponible en:
+
+- API S3: `http://localhost:9000`
+- Consola: `http://localhost:9001`
 
 ### 3. Backend
 
@@ -141,11 +150,24 @@ La aplicación estará disponible en `http://localhost:5173`.
 
 ```env
 PORT=4000
-DATABASE_URL=postgresql://expedientes:expedientes@localhost:5432/expedientes
+DATABASE_URL=mysql://expedientes:expedientes@localhost:3306/expedientes
+SHADOW_DATABASE_URL=mysql://root:root@localhost:3306/prisma_migrate_shadow
 JWT_SECRET=change_me_in_production
+JWT_REFRESH_SECRET=change_me_in_production_refresh
 JWT_EXPIRATION=15m
 JWT_REFRESH_EXPIRATION=7d
+DOCUMENTS_STORAGE_DRIVER=local
+DOCUMENTS_STORAGE_PATH=uploads
+DOCUMENTS_STORAGE_S3_ENDPOINT=http://localhost:9000
+DOCUMENTS_STORAGE_S3_REGION=us-east-1
+DOCUMENTS_STORAGE_S3_BUCKET=expedientes-docs
+DOCUMENTS_STORAGE_S3_PREFIX=
+DOCUMENTS_STORAGE_S3_ACCESS_KEY=minioadmin
+DOCUMENTS_STORAGE_S3_SECRET_KEY=minioadmin
+DOCUMENTS_STORAGE_S3_FORCE_PATH_STYLE=true
 ```
+
+Si ejecutas la API dentro de Docker Compose y activas `DOCUMENTS_STORAGE_DRIVER=minio`, usa `DOCUMENTS_STORAGE_S3_ENDPOINT=http://minio:9000`.
 
 ### apps/web/.env
 
@@ -175,7 +197,7 @@ VITE_API_URL=http://localhost:4000
 - `POST /expedientes` — Crear expediente
 - `GET /expedientes/:id` — Detalle
 - `PATCH /expedientes/:id` — Editar
-- `POST /expedientes/:id/cambiar-estado` — Transición de estado
+- `PATCH /expedientes/:id/estado` — Transición de estado
 
 ### Actuaciones
 - `POST /expedientes/:id/actuaciones` — Registrar actuación
@@ -184,12 +206,48 @@ VITE_API_URL=http://localhost:4000
 ### Documentos
 - `POST /expedientes/:id/documentos` — Subir documento (multipart)
 - `GET /expedientes/:id/documentos` — Listar documentos
-- `GET /documentos/:id/download` — Descargar documento
+- `GET /expedientes/:id/documentos/:docId/download` — Descargar documento
 
 ### Auditoría / Reportes
-- `GET /audit` — Consultar bitácora (filtros por usuario, expediente, fecha, acción)
+- `GET /auditoria` — Consultar bitácora (filtros por usuario, expediente, fecha, acción)
 - `GET /reportes/estados` — Reporte por estados
 - `GET /reportes/actividad` — Reporte de actividad
+
+---
+
+## CI/CD
+
+- **CI**: `.github/workflows/ci.yml` (lint, build, tests, e2e).
+- **CD**: `.github/workflows/cd.yml` (build/push de imágenes a GHCR + deploy opcional por SSH).
+- **Deploy remoto**: `scripts/deploy/remote-deploy.sh` (usa `docker-compose.prod.yml`).
+
+Secrets para habilitar deploy remoto:
+
+- `DEPLOY_HOST`
+- `DEPLOY_USER`
+- `DEPLOY_SSH_KEY`
+
+Opcionales:
+
+- `DEPLOY_COMMAND` (si no se define, se usa plantilla por defecto)
+- `GHCR_USERNAME` y `GHCR_TOKEN` (si necesitas `docker login` en el servidor)
+
+Variable de repositorio recomendada:
+
+- `DEPLOY_APP_DIR` (ruta absoluta del repo en el servidor; por defecto `~/expedientes-especialidad`)
+
+Plantilla por defecto de `DEPLOY_COMMAND`:
+
+```bash
+cd ~/expedientes-especialidad && bash scripts/deploy/remote-deploy.sh
+```
+
+Despliegue manual en servidor:
+
+```bash
+cp .env.prod.example .env.prod
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+```
 
 ---
 

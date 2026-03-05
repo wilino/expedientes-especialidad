@@ -27,7 +27,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getResponse()
         : 'Error interno del servidor';
 
-    if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+    if (status >= 500) {
       this.logger.error(
         `${request.method} ${request.url} → ${status}`,
         exception instanceof Error ? exception.stack : undefined,
@@ -38,7 +38,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
-      ...(typeof message === 'string' ? { message } : (message as object)),
+      ...(typeof message === 'string' ? { message } : message),
     });
   }
 }

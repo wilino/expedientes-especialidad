@@ -1,25 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma';
 import { Prisma } from '@prisma/client';
+import {
+  AuditoriaRepositoryPort,
+  FindAuditoriaParams,
+} from './auditoria.repository.port';
 
 @Injectable()
-export class AuditoriaRepository {
+export class AuditoriaRepository implements AuditoriaRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(data: Prisma.AuditLogUncheckedCreateInput) {
     return this.prisma.auditLog.create({ data });
   }
 
-  async findAll(params: {
-    skip?: number;
-    take?: number;
-    usuarioId?: string;
-    expedienteId?: string;
-    accion?: string;
-    resultado?: string;
-    desde?: Date;
-    hasta?: Date;
-  }) {
+  async findAll(params: FindAuditoriaParams) {
     const where: Prisma.AuditLogWhereInput = {};
 
     if (params.usuarioId) where.usuarioId = params.usuarioId;

@@ -1,20 +1,60 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: mysql:8.4
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "3306:3306"
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-expedientes}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-expedientes}
-      POSTGRES_DB: ${POSTGRES_DB:-expedientes}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_USER: ${MYSQL_USER:-expedientes}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-expedientes}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-expedientes}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mysqldata:/var/lib/mysql
+      - ./scripts/db/mysql-init-shadow.sql:/docker-entrypoint-initdb.d/01-shadow.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-expedientes}"]
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -u${MYSQL_USER:-expedientes} -p${MYSQL_PASSWORD:-expedientes} --silent",
+        ]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - miniodata:/data
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-expedientes-docs}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
+          echo "Esperando a MinIO..."
+          sleep 2
+        done
+        mc mb -p "local/$$MINIO_BUCKET" || true
+        mc anonymous set none "local/$$MINIO_BUCKET" || true
+        echo "Bucket $$MINIO_BUCKET listo"
+    restart: "no"
 
   api:
     build:
@@ -28,18 +68,23 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      minio:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
 
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
     restart: unless-stopped
     ports:
       - "5173:5173"
-    env_file:
-      - apps/web/.env
     depends_on:
       - api
 
 volumes:
-  pgdata:
+  mysqldata:
+  miniodata:

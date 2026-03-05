@@ -11,6 +11,11 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import {
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
   ApiTags,
   ApiOperation,
   ApiParam,
@@ -20,21 +25,33 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PaginationDto } from '../../shared/dto/pagination.dto';
+import { ApiStandardErrorResponses } from '../../shared/swagger';
+import { ErrorResponseDto } from '../../shared/dto';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { PermissionCodes } from '../rbac/constants/permission-codes.constants';
 
 @ApiTags('Usuarios')
 @ApiBearerAuth()
+@ApiStandardErrorResponses()
+@Permissions(PermissionCodes.USER_MANAGE)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
   @ApiOperation({ summary: 'Crear usuario' })
+  @ApiCreatedResponse({ description: 'Usuario creado correctamente' })
+  @ApiConflictResponse({
+    description: 'Correo ya registrado',
+    type: ErrorResponseDto,
+  })
   create(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Listar usuarios' })
+  @ApiOkResponse({ description: 'Listado paginado de usuarios' })
   findAll(@Query() pagination: PaginationDto) {
     return this.usersService.findAll(pagination.skip, pagination.take);
   }
@@ -42,6 +59,11 @@ export class UsersController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener usuario por ID' })
   @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({ description: 'Usuario encontrado' })
+  @ApiNotFoundResponse({
+    description: 'Usuario no encontrado',
+    type: ErrorResponseDto,
+  })
   findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.findById(id);
   }
@@ -49,6 +71,11 @@ export class UsersController {
   @Get(':id/roles')
   @ApiOperation({ summary: 'Obtener usuario con roles y permisos' })
   @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({ description: 'Usuario con roles y permisos' })
+  @ApiNotFoundResponse({
+    description: 'Usuario no encontrado',
+    type: ErrorResponseDto,
+  })
   findByIdWithRoles(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.findByIdWithRoles(id);
   }
@@ -56,16 +83,23 @@ export class UsersController {
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar usuario' })
   @ApiParam({ name: 'id', type: String })
-  update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateUserDto,
-  ) {
+  @ApiOkResponse({ description: 'Usuario actualizado' })
+  @ApiNotFoundResponse({
+    description: 'Usuario no encontrado',
+    type: ErrorResponseDto,
+  })
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateUserDto) {
     return this.usersService.update(id, dto);
   }
 
   @Patch(':id/toggle-estado')
   @ApiOperation({ summary: 'Activar/desactivar usuario' })
   @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({ description: 'Estado actualizado' })
+  @ApiNotFoundResponse({
+    description: 'Usuario no encontrado',
+    type: ErrorResponseDto,
+  })
   toggleEstado(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.toggleEstado(id);
   }
@@ -73,6 +107,9 @@ export class UsersController {
   @Post(':id/roles/:rolId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Asignar rol a usuario' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiParam({ name: 'rolId', type: String })
+  @ApiNoContentResponse({ description: 'Rol asignado al usuario' })
   assignRole(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('rolId', ParseUUIDPipe) rolId: string,
@@ -83,6 +120,9 @@ export class UsersController {
   @Post(':id/roles/:rolId/remove')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remover rol de usuario' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiParam({ name: 'rolId', type: String })
+  @ApiNoContentResponse({ description: 'Rol removido del usuario' })
   removeRole(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('rolId', ParseUUIDPipe) rolId: string,

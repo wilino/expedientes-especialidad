@@ -1,0 +1,103 @@
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_USER: ${MYSQL_USER:-expedientes}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-expedientes}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-expedientes}
+    volumes:
+      - mysqldata:/var/lib/mysql
+      - ./scripts/db/mysql-init-shadow.sql:/docker-entrypoint-initdb.d/01-shadow.sql:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -u${MYSQL_USER:-expedientes} -p${MYSQL_PASSWORD:-expedientes} --silent",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - miniodata:/data
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-expedientes-docs}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
+          echo "Esperando a MinIO..."
+          sleep 2
+        done
+        mc mb -p "local/$$MINIO_BUCKET" || true
+        mc anonymous set none "local/$$MINIO_BUCKET" || true
+        echo "Bucket $$MINIO_BUCKET listo"
+    restart: "no"
+
+  api:
+    image: ${API_IMAGE:-ghcr.io/owner/repo-api:latest}
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-4000}:4000"
+    environment:
+      PORT: 4000
+      DATABASE_URL: mysql://${MYSQL_USER:-expedientes}:${MYSQL_PASSWORD:-expedientes}@db:3306/${MYSQL_DATABASE:-expedientes}
+      SHADOW_DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD:-root}@db:3306/prisma_migrate_shadow
+      JWT_SECRET: ${JWT_SECRET:-change_me_in_production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change_me_in_production_refresh}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-15m}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-7d}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+      SWAGGER_PATH: ${SWAGGER_PATH:-docs}
+      SWAGGER_JSON_PATH: ${SWAGGER_JSON_PATH:-docs-json}
+      DOCUMENTS_STORAGE_DRIVER: ${DOCUMENTS_STORAGE_DRIVER:-minio}
+      DOCUMENTS_STORAGE_PATH: ${DOCUMENTS_STORAGE_PATH:-uploads}
+      DOCUMENTS_STORAGE_S3_ENDPOINT: ${DOCUMENTS_STORAGE_S3_ENDPOINT:-http://minio:9000}
+      DOCUMENTS_STORAGE_S3_REGION: ${DOCUMENTS_STORAGE_S3_REGION:-us-east-1}
+      DOCUMENTS_STORAGE_S3_BUCKET: ${DOCUMENTS_STORAGE_S3_BUCKET:-expedientes-docs}
+      DOCUMENTS_STORAGE_S3_PREFIX: ${DOCUMENTS_STORAGE_S3_PREFIX:-}
+      DOCUMENTS_STORAGE_S3_ACCESS_KEY: ${DOCUMENTS_STORAGE_S3_ACCESS_KEY:-minioadmin}
+      DOCUMENTS_STORAGE_S3_SECRET_KEY: ${DOCUMENTS_STORAGE_S3_SECRET_KEY:-minioadmin}
+      DOCUMENTS_STORAGE_S3_FORCE_PATH_STYLE: ${DOCUMENTS_STORAGE_S3_FORCE_PATH_STYLE:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+    volumes:
+      - uploadsdata:/app/uploads
+
+  web:
+    image: ${WEB_IMAGE:-ghcr.io/owner/repo-web:latest}
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    depends_on:
+      - api
+
+volumes:
+  mysqldata:
+  miniodata:
+  uploadsdata:

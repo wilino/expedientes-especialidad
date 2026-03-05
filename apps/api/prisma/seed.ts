@@ -1,7 +1,11 @@
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { createPrismaAdapterFromDatabaseUrl } from '../src/prisma/prisma-adapter.factory';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  adapter: createPrismaAdapterFromDatabaseUrl(),
+});
 
 // ── Catálogo de permisos (Apéndice A del plan) ──────────
 
@@ -13,6 +17,8 @@ const PERMISOS = [
   { codigo: 'EXPEDIENTE_CHANGE_STATE', descripcion: 'Cambiar estado de expedientes' },
   { codigo: 'ACTUACION_CREATE', descripcion: 'Registrar actuaciones' },
   { codigo: 'ACTUACION_READ', descripcion: 'Ver actuaciones' },
+  { codigo: 'ACTUACION_UPDATE', descripcion: 'Editar actuaciones' },
+  { codigo: 'ACTUACION_DELETE', descripcion: 'Eliminar actuaciones' },
   { codigo: 'DOCUMENTO_UPLOAD', descripcion: 'Subir documentos' },
   { codigo: 'DOCUMENTO_READ', descripcion: 'Ver documentos' },
   { codigo: 'DOCUMENTO_DOWNLOAD', descripcion: 'Descargar documentos' },
@@ -39,6 +45,8 @@ const ROLES: { nombre: string; descripcion: string; permisos: string[] }[] = [
       'EXPEDIENTE_CHANGE_STATE',
       'ACTUACION_CREATE',
       'ACTUACION_READ',
+      'ACTUACION_UPDATE',
+      'ACTUACION_DELETE',
       'DOCUMENTO_UPLOAD',
       'DOCUMENTO_READ',
       'DOCUMENTO_DOWNLOAD',

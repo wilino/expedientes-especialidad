@@ -1,11 +1,19 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { RbacRepository } from './rbac.repository';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  Inject,
+} from '@nestjs/common';
 import { CreateRolDto } from './dto/create-rol.dto';
 import { SetPermisosDto } from './dto/set-permisos.dto';
+import { RBAC_REPOSITORY, RbacRepositoryPort } from './rbac.repository.port';
 
 @Injectable()
 export class RbacService {
-  constructor(private readonly rbacRepository: RbacRepository) {}
+  constructor(
+    @Inject(RBAC_REPOSITORY)
+    private readonly rbacRepository: RbacRepositoryPort,
+  ) {}
 
   // ── Roles ─────────────────────────────────────────────
 

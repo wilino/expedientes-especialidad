@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma';
 import { Prisma, Rol, Permiso } from '@prisma/client';
+import { RbacRepositoryPort } from './rbac.repository.port';
 
 @Injectable()
-export class RbacRepository {
+export class RbacRepository implements RbacRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
   // ── Roles ─────────────────────────────────────────────

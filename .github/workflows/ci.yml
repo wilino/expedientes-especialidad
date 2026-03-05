@@ -7,26 +7,40 @@ on:
     branches: [main, develop]
 
 jobs:
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: SCA dependency review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
   lint-and-test:
     runs-on: ubuntu-latest
 
     services:
-      postgres:
-        image: postgres:16-alpine
+      mysql:
+        image: mysql:8.4
         env:
-          POSTGRES_USER: expedientes
-          POSTGRES_PASSWORD: expedientes
-          POSTGRES_DB: expedientes
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_USER: expedientes
+          MYSQL_PASSWORD: expedientes
+          MYSQL_DATABASE: expedientes
         ports:
-          - 5432:5432
+          - 3306:3306
         options: >-
-          --health-cmd "pg_isready -U expedientes"
+          --health-cmd "mysqladmin ping -h localhost -uexpedientes -pexpedientes --silent"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
 
     env:
-      DATABASE_URL: postgresql://expedientes:expedientes@localhost:5432/expedientes
+      DATABASE_URL: mysql://expedientes:expedientes@localhost:3306/expedientes
       JWT_SECRET: ci-test-secret
       PORT: 4000
 
@@ -41,6 +55,12 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Apply migrations
+        run: npm -w apps/api exec prisma migrate deploy
+
+      - name: Seed database
+        run: npm -w apps/api run prisma:seed
+
       - name: Lint API
         run: npm -w apps/api run lint
 
@@ -52,3 +72,6 @@ jobs:
 
       - name: Test API
         run: npm -w apps/api run test
+
+      - name: Test API e2e
+        run: npm -w apps/api run test:e2e

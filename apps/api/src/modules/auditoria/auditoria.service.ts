@@ -1,6 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { AuditoriaRepository } from './auditoria.repository';
+import {
+  AUDITORIA_REPOSITORY,
+  AuditoriaRepositoryPort,
+  FindAuditoriaParams,
+} from './auditoria.repository.port';
 
 export interface AuditEntry {
   usuarioId: string;
@@ -14,22 +18,16 @@ export interface AuditEntry {
 
 @Injectable()
 export class AuditoriaService {
-  constructor(private readonly auditoriaRepo: AuditoriaRepository) {}
+  constructor(
+    @Inject(AUDITORIA_REPOSITORY)
+    private readonly auditoriaRepo: AuditoriaRepositoryPort,
+  ) {}
 
   async registrar(entry: AuditEntry) {
     return this.auditoriaRepo.create(entry);
   }
 
-  async findAll(params: {
-    skip?: number;
-    take?: number;
-    usuarioId?: string;
-    expedienteId?: string;
-    accion?: string;
-    resultado?: string;
-    desde?: Date;
-    hasta?: Date;
-  }) {
+  async findAll(params: FindAuditoriaParams) {
     return this.auditoriaRepo.findAll(params);
   }
 }
