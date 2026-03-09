@@ -1,188 +1,123 @@
-import { useEffect, useState } from 'react';
-import type { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../features/auth/use-auth';
-import type { ExpedienteItem, PaginatedResponse } from '../lib/contracts';
+import { useState } from 'react';
+import { Box, Button, Stack } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import { useNavigate } from 'react-router-dom';
+import { PageHeader } from '../ui/components';
+import {
+  CreateExpedienteDialog,
+  EditExpedienteDialog,
+  ExpedientesFilterBar,
+  ExpedientesTable,
+  useExpedientesList,
+} from '../features/expedientes';
+import { usePermissions } from '../features/auth/use-permissions';
+import { PermissionCodes } from '../features/auth/permission-codes';
+import { useFeedbackSnackbar } from '../ui/hooks/use-feedback-snackbar';
+import type { EstadoExpediente, ExpedienteItem } from '../lib/contracts';
 
-type EstadoExpediente = 'ABIERTO' | 'EN_TRAMITE' | 'CERRADO' | 'ARCHIVADO';
+const Permisos = PermissionCodes;
 
 export function ExpedientesPage() {
-  const { apiRequest } = useAuth();
-  const [expedientes, setExpedientes] = useState<ExpedienteItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [q, setQ] = useState('');
-  const [codigo, setCodigo] = useState('');
-  const [caratula, setCaratula] = useState('');
+  const navigate = useNavigate();
+  const feedback = useFeedbackSnackbar();
+  const { can } = usePermissions();
+  const canCreate = can(Permisos.EXPEDIENTE_CREATE);
+  const canUpdate = can(Permisos.EXPEDIENTE_UPDATE);
+  const canChangeState = can(Permisos.EXPEDIENTE_CHANGE_STATE);
 
-  const loadExpedientes = async () => {
-    setLoading(true);
-    setError('');
+  const [query, setQuery] = useState('');
+  const [appliedQuery, setAppliedQuery] = useState('');
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<ExpedienteItem | null>(null);
+
+  const { listQuery, createMutation, updateMutation, changeEstadoMutation } =
+    useExpedientesList(appliedQuery);
+
+  const expedientes = listQuery.data?.data ?? [];
+  const total = listQuery.data?.total ?? 0;
+
+  const handleCreate = async (codigo: string, caratula: string) => {
     try {
-      const query = new URLSearchParams({
-        take: '50',
-        ...(q.trim() ? { q: q.trim() } : {}),
-      });
-
-      const response = await apiRequest<PaginatedResponse<ExpedienteItem>>(
-        `/expedientes?${query.toString()}`,
-      );
-      setExpedientes(response.data);
-      setTotal(response.total);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo cargar expedientes');
-    } finally {
-      setLoading(false);
+      await createMutation.mutateAsync({ codigo, caratula });
+      feedback.success('Expediente creado correctamente');
+    } catch (error) {
+      feedback.error(error, 'Error al crear expediente');
+      throw error;
     }
   };
 
-  useEffect(() => {
-    void loadExpedientes();
-    // Solo carga inicial.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const createExpediente = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError('');
+  const handleEdit = async (id: string, caratula: string) => {
     try {
-      await apiRequest<ExpedienteItem>('/expedientes', {
-        method: 'POST',
-        body: JSON.stringify({
-          codigo: codigo.trim(),
-          caratula: caratula.trim(),
-        }),
-      });
-      setCodigo('');
-      setCaratula('');
-      await loadExpedientes();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo crear expediente');
+      await updateMutation.mutateAsync({ id, caratula });
+      feedback.success('Expediente actualizado');
+    } catch (error) {
+      feedback.error(error, 'Error al actualizar');
+      throw error;
     }
   };
 
-  const cambiarEstado = async (id: string, estado: EstadoExpediente) => {
-    setError('');
+  const handleEstadoChange = async (id: string, estado: EstadoExpediente) => {
     try {
-      await apiRequest(`/expedientes/${id}/estado`, {
-        method: 'PATCH',
-        body: JSON.stringify({ estado }),
-      });
-      await loadExpedientes();
-    } catch (e) {
-      setError(
-        e instanceof Error ? e.message : 'No se pudo cambiar el estado del expediente',
-      );
+      await changeEstadoMutation.mutateAsync({ id, estado });
+      feedback.success('Estado actualizado');
+    } catch (error) {
+      feedback.error(error, 'Transición de estado inválida');
     }
   };
 
   return (
-    <div className="stack">
-      <div>
-        <p className="eyebrow">Gestión de casos</p>
-        <h2>Expedientes</h2>
-      </div>
+    <Stack spacing={3}>
+      <PageHeader
+        eyebrow="Gestión de casos"
+        title="Expedientes"
+        subtitle={`${total} expediente${total !== 1 ? 's' : ''} registrado${
+          total !== 1 ? 's' : ''
+        }`}
+        actions={
+          canCreate ? (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
+              Nuevo expediente
+            </Button>
+          ) : undefined
+        }
+      />
 
-      <form className="panel two-columns form-grid" onSubmit={createExpediente}>
-        <label className="field">
-          Código
-          <input
-            value={codigo}
-            onChange={(event) => setCodigo(event.target.value)}
-            required
-            placeholder="EXP-2026-001"
-          />
-        </label>
+      <ExpedientesFilterBar
+        query={query}
+        onQueryChange={setQuery}
+        onApply={() => setAppliedQuery(query.trim())}
+      />
 
-        <label className="field">
-          Carátula
-          <input
-            value={caratula}
-            onChange={(event) => setCaratula(event.target.value)}
-            required
-            placeholder="Demanda laboral - Juan Perez"
-          />
-        </label>
+      {listQuery.isError ? (
+        <Box sx={{ color: 'error.main' }}>
+          {listQuery.error instanceof Error
+            ? listQuery.error.message
+            : 'No se pudo cargar expedientes'}
+        </Box>
+      ) : null}
 
-        <button className="primary-button" type="submit">
-          Crear expediente
-        </button>
-      </form>
+      <ExpedientesTable
+        rows={expedientes}
+        loading={listQuery.isLoading}
+        canUpdate={canUpdate}
+        canChangeState={canChangeState}
+        onViewDetail={(item) => navigate(`/expedientes/${item.id}`)}
+        onEdit={(item) => setEditTarget(item)}
+        onChangeState={(id, estado) => void handleEstadoChange(id, estado)}
+      />
 
-      <section className="panel">
-        <div className="inline-toolbar">
-          <label className="field field-inline">
-            Buscar
-            <input
-              value={q}
-              onChange={(event) => setQ(event.target.value)}
-              placeholder="Código o carátula"
-            />
-          </label>
-          <button className="ghost-button" onClick={() => void loadExpedientes()}>
-            Filtrar
-          </button>
-          <span className="muted">Total: {total}</span>
-        </div>
+      <CreateExpedienteDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onSave={handleCreate}
+      />
 
-        {loading ? <p className="muted">Cargando...</p> : null}
-        {error ? <p className="error-text">{error}</p> : null}
-
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Código</th>
-                <th>Carátula</th>
-                <th>Estado</th>
-                <th>Fecha apertura</th>
-                <th>Cambio de estado</th>
-                <th>Vistas</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expedientes.map((item) => (
-                <tr key={item.id}>
-                  <td>{item.codigo}</td>
-                  <td>{item.caratula}</td>
-                  <td>{item.estado}</td>
-                  <td>{new Date(item.fechaApertura).toLocaleDateString()}</td>
-                  <td>
-                    <select
-                      value={item.estado}
-                      onChange={(event) =>
-                        void cambiarEstado(item.id, event.target.value as EstadoExpediente)
-                      }
-                    >
-                      <option value="ABIERTO">ABIERTO</option>
-                      <option value="EN_TRAMITE">EN_TRAMITE</option>
-                      <option value="CERRADO">CERRADO</option>
-                      <option value="ARCHIVADO">ARCHIVADO</option>
-                    </select>
-                  </td>
-                  <td>
-                    <div className="inline-toolbar">
-                      <Link
-                        className="ghost-button"
-                        to={`/actuaciones?expedienteId=${item.id}`}
-                      >
-                        Actuaciones
-                      </Link>
-                      <Link
-                        className="ghost-button"
-                        to={`/documentos?expedienteId=${item.id}`}
-                      >
-                        Documentos
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
+      <EditExpedienteDialog
+        open={!!editTarget}
+        expediente={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSave={handleEdit}
+      />
+    </Stack>
   );
 }

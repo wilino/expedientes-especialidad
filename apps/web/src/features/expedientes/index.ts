@@ -1,0 +1,9 @@
+export { EditExpedienteDialog } from './edit-expediente-dialog';
+export { CreateExpedienteDialog } from './create-expediente-dialog';
+export { EstadoChip } from './estado-chip';
+export { useExpedientesList } from './use-expedientes-list';
+export { useExpedienteDetail } from './use-expediente-detail';
+export { ExpedientesFilterBar } from './list/expedientes-filter-bar';
+export { ExpedientesTable } from './list/expedientes-table';
+export { ExpedienteMainInfo } from './detail/expediente-main-info';
+export { ExpedienteRelatedCard } from './detail/expediente-related-card';

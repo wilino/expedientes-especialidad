@@ -3,12 +3,28 @@ export interface PaginatedResponse<T> {
   total: number;
 }
 
+export type EstadoExpediente = 'ABIERTO' | 'EN_TRAMITE' | 'CERRADO' | 'ARCHIVADO';
+
 export interface ExpedienteItem {
   id: string;
   codigo: string;
   caratula: string;
-  estado: string;
+  estado: EstadoExpediente;
   fechaApertura: string;
+  creador?: { id: string; nombre: string };
+  _count?: { actuaciones: number; documentos: number };
+}
+
+export interface ExpedienteDetail {
+  id: string;
+  codigo: string;
+  caratula: string;
+  estado: EstadoExpediente;
+  fechaApertura: string;
+  createdAt: string;
+  updatedAt: string;
+  creador: { id: string; nombre: string; correo: string };
+  _count: { actuaciones: number; documentos: number };
 }
 
 export interface ActuacionItem {
@@ -60,6 +76,49 @@ export interface RolItem {
   id: string;
   nombre: string;
   descripcion?: string | null;
+}
+
+export interface AdminRoleSummary {
+  id: string;
+  nombre: string;
+  descripcion?: string | null;
+}
+
+export interface AdminUserItem {
+  id: string;
+  nombre: string;
+  correo: string;
+  estado: boolean;
+  createdAt: string;
+  updatedAt: string;
+  roles: AdminRoleSummary[];
+  permisos?: string[];
+}
+
+export interface AdminUsersResponse {
+  data: AdminUserItem[];
+  total: number;
+}
+
+export interface AdminPermissionItem {
+  id: string;
+  codigo: string;
+  descripcion?: string | null;
+}
+
+export interface AdminRolePermissionLink {
+  permisoId: string;
+  permiso: AdminPermissionItem;
+}
+
+export interface AdminRoleItem {
+  id: string;
+  nombre: string;
+  descripcion?: string | null;
+  permisos: AdminRolePermissionLink[];
+  _count?: {
+    usuarios: number;
+  };
 }
 
 export interface ReporteEstados {
