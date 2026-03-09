@@ -10,6 +10,16 @@ const prisma = new PrismaClient({
 // ── Catálogo de permisos (Apéndice A del plan) ──────────
 
 const PERMISOS = [
+  { codigo: 'DASHBOARD_READ', descripcion: 'Ver dashboard operativo' },
+  { codigo: 'ACTIVIDAD_READ', descripcion: 'Consultar actividad reciente' },
+  { codigo: 'NOTIFICACION_READ', descripcion: 'Ver notificaciones' },
+  {
+    codigo: 'NOTIFICACION_UPDATE',
+    descripcion: 'Marcar notificaciones como leídas',
+  },
+  { codigo: 'RECORDATORIO_READ', descripcion: 'Ver recordatorios' },
+  { codigo: 'RECORDATORIO_CREATE', descripcion: 'Crear recordatorios' },
+  { codigo: 'RECORDATORIO_UPDATE', descripcion: 'Editar recordatorios' },
   { codigo: 'EXPEDIENTE_READ', descripcion: 'Ver expedientes' },
   { codigo: 'EXPEDIENTE_CREATE', descripcion: 'Crear expedientes' },
   { codigo: 'EXPEDIENTE_UPDATE', descripcion: 'Editar expedientes' },
@@ -39,6 +49,13 @@ const ROLES: { nombre: string; descripcion: string; permisos: string[] }[] = [
     nombre: 'abogado',
     descripcion: 'Abogado — gestiona expedientes y actuaciones',
     permisos: [
+      'DASHBOARD_READ',
+      'ACTIVIDAD_READ',
+      'NOTIFICACION_READ',
+      'NOTIFICACION_UPDATE',
+      'RECORDATORIO_READ',
+      'RECORDATORIO_CREATE',
+      'RECORDATORIO_UPDATE',
       'EXPEDIENTE_READ',
       'EXPEDIENTE_CREATE',
       'EXPEDIENTE_UPDATE',
@@ -57,6 +74,13 @@ const ROLES: { nombre: string; descripcion: string; permisos: string[] }[] = [
     nombre: 'asistente',
     descripcion: 'Asistente — lectura y registro de actuaciones',
     permisos: [
+      'DASHBOARD_READ',
+      'ACTIVIDAD_READ',
+      'NOTIFICACION_READ',
+      'NOTIFICACION_UPDATE',
+      'RECORDATORIO_READ',
+      'RECORDATORIO_CREATE',
+      'RECORDATORIO_UPDATE',
       'EXPEDIENTE_READ',
       'ACTUACION_CREATE',
       'ACTUACION_READ',

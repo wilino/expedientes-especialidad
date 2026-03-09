@@ -76,19 +76,33 @@ jobs:
     name: Deploy
     runs-on: ubuntu-latest
     needs: build-and-push
-    if: ${{ github.ref == 'refs/heads/main' && secrets.DEPLOY_HOST != '' && secrets.DEPLOY_USER != '' && secrets.DEPLOY_SSH_KEY != '' }}
+    if: github.ref == 'refs/heads/main'
 
     steps:
+      - name: Check deploy secrets
+        env:
+          HAS_HOST: ${{ secrets.DEPLOY_HOST }}
+          HAS_USER: ${{ secrets.DEPLOY_USER }}
+          HAS_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          if [ -z "$HAS_HOST" ] || [ -z "$HAS_USER" ] || [ -z "$HAS_KEY" ]; then
+            echo "::warning::Deploy secrets not configured — skipping deploy."
+            echo "SKIP_DEPLOY=true" >> "$GITHUB_ENV"
+          fi
+
       - name: Configure SSH key
+        if: env.SKIP_DEPLOY != 'true'
         run: |
           install -m 700 -d ~/.ssh
           printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
       - name: Add deploy host to known_hosts
+        if: env.SKIP_DEPLOY != 'true'
         run: ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Run remote deploy command
+        if: env.SKIP_DEPLOY != 'true'
         env:
           DEPLOY_COMMAND: ${{ secrets.DEPLOY_COMMAND }}
           DEPLOY_APP_DIR: ${{ vars.DEPLOY_APP_DIR }}

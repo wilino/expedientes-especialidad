@@ -5,21 +5,22 @@ export const components: Components<Omit<Theme, 'components'>> = {
     styleOverrides: {
       body: {
         background:
-          'radial-gradient(circle at 8% 8%, #ffe2ce 0%, transparent 40%), radial-gradient(circle at 90% 12%, #f4e5c2 0%, transparent 35%), #f5f3ef',
+          'radial-gradient(circle at 10% 8%, rgba(74,144,217,0.09) 0%, transparent 40%), radial-gradient(circle at 88% 12%, rgba(200,169,81,0.08) 0%, transparent 36%), #F4F6FA',
       },
     },
   },
   MuiPaper: {
     styleOverrides: {
       root: {
-        border: '1px solid #ddd5c8',
+        border: '1px solid #E2E6EF',
       },
     },
   },
   MuiCard: {
     styleOverrides: {
       root: {
-        borderRadius: 12,
+        borderRadius: 14,
+        boxShadow: '0 4px 24px rgba(15, 27, 51, 0.06)',
       },
     },
   },

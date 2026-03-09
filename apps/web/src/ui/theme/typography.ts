@@ -1,21 +1,34 @@
 import type { ThemeOptions } from '@mui/material/styles';
 
 export const typography: NonNullable<ThemeOptions['typography']> = {
-  fontFamily: '"IBM Plex Sans", sans-serif',
+  fontFamily: '"Inter", sans-serif',
   h1: {
-    fontFamily: '"Fraunces", serif',
-    fontWeight: 600,
-    fontSize: '2.2rem',
+    fontFamily: '"Plus Jakarta Sans", "Inter", sans-serif',
+    fontWeight: 800,
+    fontSize: '2.35rem',
   },
   h2: {
-    fontFamily: '"Fraunces", serif',
-    fontWeight: 600,
-    fontSize: '1.8rem',
+    fontFamily: '"Plus Jakarta Sans", "Inter", sans-serif',
+    fontWeight: 800,
+    fontSize: '1.9rem',
   },
   h3: {
-    fontFamily: '"Fraunces", serif',
-    fontWeight: 600,
-    fontSize: '1.25rem',
+    fontFamily: '"Plus Jakarta Sans", "Inter", sans-serif',
+    fontWeight: 700,
+    fontSize: '1.35rem',
+  },
+  h4: {
+    fontFamily: '"Plus Jakarta Sans", "Inter", sans-serif',
+    fontWeight: 700,
+    fontSize: '1.6rem',
+  },
+  h5: {
+    fontFamily: '"Plus Jakarta Sans", "Inter", sans-serif',
+    fontWeight: 700,
+  },
+  h6: {
+    fontFamily: '"Plus Jakarta Sans", "Inter", sans-serif',
+    fontWeight: 700,
   },
   subtitle1: {
     fontWeight: 600,

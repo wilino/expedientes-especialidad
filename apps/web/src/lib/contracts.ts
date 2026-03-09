@@ -145,3 +145,105 @@ export interface ReporteActividad {
     total: number;
   }>;
 }
+
+export type NotificacionTipo = 'VENCIMIENTO' | 'ALERTA' | 'EXITO' | 'INFO';
+
+export type RecursoTipo =
+  | 'EXPEDIENTE'
+  | 'ACTUACION'
+  | 'DOCUMENTO'
+  | 'AUDITORIA'
+  | 'SISTEMA';
+
+export type RecordatorioPrioridad = 'URGENTE' | 'NORMAL' | 'BAJA';
+
+export type DashboardTrendDirection = 'up' | 'down' | 'flat';
+
+export interface DashboardSummaryResponse {
+  generatedAt: string;
+  period: {
+    windowDays: number;
+    currentFrom: string;
+    currentTo: string;
+    previousFrom: string;
+    previousTo: string;
+  };
+  kpis: Array<{
+    key: string;
+    label: string;
+    value: number;
+    currentWindowValue: number;
+    previousWindowValue: number;
+    trendPercent: number;
+    trendDirection: DashboardTrendDirection;
+  }>;
+  remindersToday: number;
+  unreadNotifications: number;
+  expedientesByEstado: Array<{
+    estado: EstadoExpediente;
+    total: number;
+  }>;
+}
+
+export interface DashboardGaugesResponse {
+  generatedAt: string;
+  period: {
+    windowDays: number;
+    currentFrom: string;
+    currentTo: string;
+  };
+  gauges: Array<{
+    key: 'resolutionRate' | 'deadlineCompliance' | 'documentIntegrity' | 'auditCoverage';
+    label: string;
+    value: number;
+    numerator: number;
+    denominator: number;
+  }>;
+}
+
+export interface NotificationItem {
+  id: string;
+  tipo: NotificacionTipo;
+  titulo: string;
+  mensaje: string | null;
+  recursoTipo: RecursoTipo | null;
+  recursoId: string | null;
+  leida: boolean;
+  createdAt: string;
+  readOnly: boolean;
+  source: 'persisted' | 'fallback';
+}
+
+export interface NotificationsListResponse {
+  data: NotificationItem[];
+  unreadCount: number;
+}
+
+export interface ReminderItem {
+  id: string;
+  titulo: string;
+  descripcion: string | null;
+  fechaHora: string;
+  prioridad: RecordatorioPrioridad;
+  completado: boolean;
+  recursoTipo: RecursoTipo | null;
+  recursoId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RemindersListResponse {
+  data: ReminderItem[];
+}
+
+export interface ActivityRecentResponse {
+  data: Array<{
+    id: string;
+    accion: string;
+    recurso: string;
+    resultado: string;
+    timestamp: string;
+    usuario: { id: string; nombre: string } | null;
+    expediente: { id: string; codigo: string } | null;
+  }>;
+}

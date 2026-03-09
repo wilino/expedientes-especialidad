@@ -1,20 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
-
 :root {
-  --bg: #f5f3ef;
-  --bg-soft: #ece8df;
-  --surface: #fffdf9;
-  --ink: #2b2620;
-  --muted: #6f675d;
-  --brand: #a34a22;
-  --brand-strong: #813918;
-  --line: #ddd5c8;
-  --ok: #0c7b49;
+  --bg: #f4f6fa;
+  --bg-soft: #edf2f9;
+  --surface: #ffffff;
+  --ink: #1a1d26;
+  --muted: #6b7280;
+  --brand: #1b2a4a;
+  --brand-strong: #0f1b33;
+  --line: #e2e6ef;
+  --ok: #22a96b;
 
-  font-family: 'IBM Plex Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   color: var(--ink);
-  background: radial-gradient(circle at 8% 8%, #ffe2ce 0%, transparent 40%),
-    radial-gradient(circle at 90% 12%, #f4e5c2 0%, transparent 35%), var(--bg);
+  background: radial-gradient(circle at 8% 8%, rgba(74, 144, 217, 0.1) 0%, transparent 40%),
+    radial-gradient(circle at 90% 12%, rgba(200, 169, 81, 0.08) 0%, transparent 35%), var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -36,7 +34,7 @@ body {
 h1,
 h2,
 h3 {
-  font-family: 'Fraunces', serif;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
   margin: 0;
 }
 
@@ -188,7 +186,7 @@ a {
 
 input,
 select {
-  border: 1px solid #cfc5b5;
+  border: 1px solid #d7dde8;
   border-radius: 0.6rem;
   padding: 0.6rem 0.7rem;
   background: white;
@@ -196,7 +194,7 @@ select {
 
 input:focus,
 select:focus {
-  outline: 2px solid #f1b085;
+  outline: 2px solid #9fb3d8;
   outline-offset: 1px;
 }
 
@@ -283,7 +281,7 @@ select:focus {
 
 .metric-value {
   margin: 0;
-  font-family: 'Fraunces', serif;
+  font-family: 'DM Sans', 'Inter', sans-serif;
   font-size: 1.5rem;
   color: var(--ok);
 }

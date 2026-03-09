@@ -1,98 +1,168 @@
-import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
+import FolderOpenRoundedIcon from '@mui/icons-material/FolderOpenRounded';
+import GavelRoundedIcon from '@mui/icons-material/GavelRounded';
+import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
+import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
+import { Alert, Box, Skeleton, Stack } from '@mui/material';
 import { useAuth } from '../features/auth/use-auth';
-import type { ReporteActividad, ReporteEstados } from '../lib/contracts';
+import {
+  ActivityTimeline,
+  DashboardGreeting,
+  ExpedienteDonutChart,
+  GaugePanel,
+  NotificationPanel,
+  ReminderPanel,
+  StatCard,
+  useDashboardData,
+  useNotifications,
+  useReminders,
+  type CreateReminderInput,
+} from '../features/dashboard';
+import type { DashboardSummaryResponse } from '../lib/contracts';
+
+function toErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+const kpiIconMap: Record<string, ReactNode> = {
+  expedientes: <FolderOpenRoundedIcon fontSize="small" />,
+  actuaciones: <GavelRoundedIcon fontSize="small" />,
+  documentos: <DescriptionRoundedIcon fontSize="small" />,
+  auditoria: <FactCheckRoundedIcon fontSize="small" />,
+};
+
+function KPISection({
+  summary,
+  loading,
+}: {
+  summary?: DashboardSummaryResponse;
+  loading: boolean;
+}) {
+  return (
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: {
+          xs: '1fr',
+          sm: 'repeat(2, minmax(0, 1fr))',
+          lg: 'repeat(4, minmax(0, 1fr))',
+        },
+        gap: 1.2,
+      }}
+    >
+      {loading
+        ? Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} variant="rounded" animation="wave" sx={{ borderRadius: 2, height: 120 }} />
+          ))
+        : (summary?.kpis ?? []).map((kpi) => (
+            <StatCard
+              key={kpi.key}
+              icon={kpiIconMap[kpi.key] ?? <FolderOpenRoundedIcon fontSize="small" />}
+              label={kpi.label}
+              value={kpi.value}
+              trendPercent={kpi.trendPercent}
+              trendDirection={kpi.trendDirection}
+            />
+          ))}
+    </Box>
+  );
+}
 
 export function DashboardPage() {
-  const { apiRequest } = useAuth();
-  const [estados, setEstados] = useState<ReporteEstados | null>(null);
-  const [actividad, setActividad] = useState<ReporteActividad | null>(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { summaryQuery, gaugesQuery, activityQuery } = useDashboardData(30);
+  const { notificationsQuery, markReadMutation } = useNotifications({ take: 20 });
+  const { remindersQuery, createReminderMutation, updateReminderMutation } = useReminders({
+    take: 50,
+  });
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const [estadosResponse, actividadResponse] = await Promise.all([
-          apiRequest<ReporteEstados>('/reportes/estados'),
-          apiRequest<ReporteActividad>('/reportes/actividad'),
-        ]);
-        setEstados(estadosResponse);
-        setActividad(actividadResponse);
-      } catch (e) {
-        const message =
-          e instanceof Error ? e.message : 'No se pudo cargar el dashboard';
-        setError(message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const summary = summaryQuery.data;
+  const gauges = gaugesQuery.data?.gauges ?? [];
+  const activityEvents = activityQuery.data?.data ?? [];
+  const notifications = notificationsQuery.data?.data ?? [];
+  const unreadCount = notificationsQuery.data?.unreadCount ?? 0;
+  const reminders = remindersQuery.data?.data ?? [];
 
-    void load();
-  }, [apiRequest]);
+  const handleMarkRead = (id: string) => {
+    markReadMutation.mutate(id);
+  };
 
-  if (loading) {
-    return <p className="muted">Cargando dashboard...</p>;
-  }
+  const handleToggleReminder = (id: string, completado: boolean) => {
+    updateReminderMutation.mutate({ id, completado });
+  };
 
-  if (error) {
-    return <p className="error-text">{error}</p>;
-  }
+  const handleCreateReminder = async (payload: CreateReminderInput) => {
+    await createReminderMutation.mutateAsync(payload);
+  };
 
   return (
-    <div className="stack">
-      <div>
-        <p className="eyebrow">Resumen operativo</p>
-        <h2>Dashboard</h2>
-      </div>
+    <Stack spacing={2.2}>
+      <DashboardGreeting userName={user?.nombre} remindersToday={summary?.remindersToday ?? 0} />
 
-      <div className="metric-grid">
-        <article className="panel metric-card">
-          <p className="metric-label">Expedientes totales</p>
-          <p className="metric-value">{estados?.totalExpedientes ?? 0}</p>
-        </article>
-        <article className="panel metric-card">
-          <p className="metric-label">Actuaciones</p>
-          <p className="metric-value">
-            {actividad?.totales.actuacionesRegistradas ?? 0}
-          </p>
-        </article>
-        <article className="panel metric-card">
-          <p className="metric-label">Documentos subidos</p>
-          <p className="metric-value">{actividad?.totales.documentosSubidos ?? 0}</p>
-        </article>
-        <article className="panel metric-card">
-          <p className="metric-label">Eventos auditoría</p>
-          <p className="metric-value">{actividad?.totales.eventosAuditoria ?? 0}</p>
-        </article>
-      </div>
+      {summaryQuery.isError ? (
+        <Alert severity="error">{toErrorMessage(summaryQuery.error, 'No se pudo cargar el dashboard')}</Alert>
+      ) : null}
 
-      <div className="two-columns">
-        <section className="panel">
-          <h3>Expedientes por estado</h3>
-          <ul className="simple-list">
-            {(estados?.porEstado ?? []).map((item) => (
-              <li key={item.estado}>
-                <span>{item.estado}</span>
-                <strong>{item.total}</strong>
-              </li>
-            ))}
-          </ul>
-        </section>
+      <KPISection summary={summary} loading={summaryQuery.isLoading} />
 
-        <section className="panel">
-          <h3>Auditoría por resultado</h3>
-          <ul className="simple-list">
-            {(actividad?.eventosPorResultado ?? []).map((item) => (
-              <li key={item.resultado}>
-                <span>{item.resultado}</span>
-                <strong>{item.total}</strong>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
-    </div>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', xl: '7fr 5fr' },
+          gap: 1.5,
+          alignItems: 'start',
+        }}
+      >
+        <GaugePanel
+          gauges={gauges}
+          loading={gaugesQuery.isLoading}
+          error={gaugesQuery.isError ? toErrorMessage(gaugesQuery.error, 'Error al cargar gauges') : null}
+        />
+
+        <NotificationPanel
+          items={notifications}
+          unreadCount={unreadCount}
+          loading={notificationsQuery.isLoading}
+          error={
+            notificationsQuery.isError
+              ? toErrorMessage(notificationsQuery.error, 'Error al cargar notificaciones')
+              : null
+          }
+          onMarkRead={handleMarkRead}
+          markingId={markReadMutation.variables ?? null}
+        />
+      </Box>
+
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', xl: '7fr 5fr' },
+          gap: 1.5,
+          alignItems: 'start',
+        }}
+      >
+        <ExpedienteDonutChart data={summary?.expedientesByEstado ?? []} loading={summaryQuery.isLoading} />
+
+        <ReminderPanel
+          items={reminders}
+          loading={remindersQuery.isLoading}
+          error={remindersQuery.isError ? toErrorMessage(remindersQuery.error, 'Error al cargar recordatorios') : null}
+          creating={createReminderMutation.isPending}
+          updatingId={updateReminderMutation.variables?.id ?? null}
+          onToggleComplete={handleToggleReminder}
+          onCreate={handleCreateReminder}
+        />
+      </Box>
+
+      <ActivityTimeline
+        events={activityEvents}
+        loading={activityQuery.isLoading}
+        error={activityQuery.isError ? toErrorMessage(activityQuery.error, 'Error al cargar actividad') : null}
+      />
+    </Stack>
   );
 }

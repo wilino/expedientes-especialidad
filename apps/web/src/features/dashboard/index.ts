@@ -1,0 +1,12 @@
+export { createDashboardApi } from './dashboard-api';
+export type { CreateReminderInput, UpdateReminderInput } from './dashboard-api';
+export { useDashboardData } from './hooks/use-dashboard-data';
+export { useNotifications } from './hooks/use-notifications';
+export { useReminders } from './hooks/use-reminders';
+export { DashboardGreeting } from './components/dashboard-greeting';
+export { StatCard } from './components/stat-card';
+export { GaugePanel } from './components/gauge-panel';
+export { NotificationPanel } from './components/notification-panel';
+export { ReminderPanel } from './components/reminder-panel';
+export { ExpedienteDonutChart } from './components/expediente-donut-chart';
+export { ActivityTimeline } from './components/activity-timeline';

@@ -94,7 +94,7 @@ export const appRouter = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { index: true, element: withSuspense(<DashboardPage />) },
+      { index: true, element: withGuard(<DashboardPage />, AccessRules.dashboard) },
       {
         path: 'expedientes',
         element: withGuard(<ExpedientesPage />, AccessRules.expedientes),

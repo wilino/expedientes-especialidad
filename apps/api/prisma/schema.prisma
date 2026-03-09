@@ -23,6 +23,8 @@ model Usuario {
   actuaciones Actuacion[]
   documentos  Documento[]
   auditLogs   AuditLog[]
+  notificaciones Notificacion[]
+  recordatorios  Recordatorio[]
 
   @@map("usuario")
 }
@@ -79,6 +81,27 @@ enum EstadoExpediente {
   EN_TRAMITE
   CERRADO
   ARCHIVADO
+}
+
+enum NotificacionTipo {
+  VENCIMIENTO
+  ALERTA
+  EXITO
+  INFO
+}
+
+enum RecursoTipo {
+  EXPEDIENTE
+  ACTUACION
+  DOCUMENTO
+  AUDITORIA
+  SISTEMA
+}
+
+enum RecordatorioPrioridad {
+  URGENTE
+  NORMAL
+  BAJA
 }
 
 model Expediente {
@@ -154,4 +177,43 @@ model AuditLog {
   @@index([usuarioId])
   @@index([expedienteId])
   @@map("audit_log")
+}
+
+model Notificacion {
+  id          String           @id @default(uuid())
+  usuarioId   String           @map("usuario_id")
+  tipo        NotificacionTipo
+  titulo      String
+  mensaje     String?
+  recursoId   String?          @map("recurso_id")
+  recursoTipo RecursoTipo?     @map("recurso_tipo")
+  leida       Boolean          @default(false)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, leida])
+  @@index([createdAt])
+  @@map("notificaciones")
+}
+
+model Recordatorio {
+  id          String               @id @default(uuid())
+  usuarioId   String               @map("usuario_id")
+  titulo      String
+  descripcion String?
+  fechaHora   DateTime             @map("fecha_hora")
+  prioridad   RecordatorioPrioridad @default(NORMAL)
+  completado  Boolean              @default(false)
+  recursoId   String?              @map("recurso_id")
+  recursoTipo RecursoTipo?         @map("recurso_tipo")
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, fechaHora])
+  @@index([usuarioId, completado])
+  @@map("recordatorios")
 }

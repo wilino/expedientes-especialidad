@@ -1,5 +1,6 @@
 import { createTheme, responsiveFontSizes } from '@mui/material/styles';
 import { components } from './components';
+export { gradients } from './gradients';
 import { palette } from './palette';
 import { typography } from './typography';
 

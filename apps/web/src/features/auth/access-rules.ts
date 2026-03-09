@@ -6,6 +6,10 @@ export interface AccessRule {
 }
 
 export const AccessRules = {
+  dashboard: {
+    permissions: [PermissionCodes.DASHBOARD_READ],
+    requireAll: true,
+  },
   expedientes: {
     permissions: [PermissionCodes.EXPEDIENTE_READ],
     requireAll: true,

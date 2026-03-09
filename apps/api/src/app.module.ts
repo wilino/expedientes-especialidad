@@ -12,6 +12,10 @@ import { ActuacionesModule } from './modules/actuaciones';
 import { DocumentosModule } from './modules/documentos';
 import { AuditoriaModule } from './modules/auditoria';
 import { ReportesModule } from './modules/reportes';
+import { DashboardModule } from './modules/dashboard';
+import { NotificacionesModule } from './modules/notificaciones';
+import { RecordatoriosModule } from './modules/recordatorios';
+import { ActividadModule } from './modules/actividad';
 import { AuditInterceptor } from './shared/interceptors';
 
 @Module({
@@ -38,6 +42,10 @@ import { AuditInterceptor } from './shared/interceptors';
     DocumentosModule,
     AuditoriaModule,
     ReportesModule,
+    DashboardModule,
+    NotificacionesModule,
+    RecordatoriosModule,
+    ActividadModule,
   ],
   providers: [
     {

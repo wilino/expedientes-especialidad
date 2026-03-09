@@ -1,17 +1,26 @@
-# Legal Case Management — Expedientes Legales con RBAC y Trazabilidad
+# Expedientes Legales — Sistema de Gestión para Buffet de Abogados
 
-Sistema full-stack para **gestión de expedientes legales** con **control de acceso basado en roles (RBAC)** y **trazabilidad/auditoría completa**.
+Sistema full-stack para **gestión de expedientes legales** con **RBAC**, **trazabilidad completa** y **dashboard operativo moderno** diseñado para bufetes de abogados.
 
-Proyecto académico basado en el documento *"Desarrollo de un sistema full stack orientado a la gestión de expedientes legales utilizando control de acceso y trazabilidad"* (2026).
+Proyecto académico: *"Desarrollo de un sistema full stack orientado a la gestión de expedientes legales utilizando control de acceso y trazabilidad"* (2026).
 
 ---
 
 ## Características
 
+### Dashboard operativo
+- **Banner contextual** con saludo personalizado y conteo de recordatorios del día
+- **KPI Cards** con métricas en tiempo real (expedientes, actuaciones, documentos, auditoría) y tendencia porcentual
+- **Gauges semicirculares** — tacómetros visuales: tasa de resolución, cumplimiento de plazos, integridad documental, cobertura de auditoría
+- **Gráfico donut** de expedientes por estado (Abierto / En trámite / Cerrado / Archivado)
+- **Panel de notificaciones** con badge, tipos por color (vencimiento, alerta, éxito, info) y marcado de lectura
+- **Panel de recordatorios** tipo to-do, agrupados por fecha con prioridades y checkboxes
+- **Timeline de actividad reciente** con eventos linkados a recursos
+
 ### Gestión Legal
-- **Expedientes**: CRUD completo + búsqueda + control de estados (`ABIERTO` → `EN_TRAMITE` → `CERRADO` → `ARCHIVADO`)
-- **Actuaciones**: registro cronológico de acciones vinculadas al expediente
-- **Documentos**: adjuntos con metadatos, hash SHA-256, descarga y storage configurable (`local`/`s3`/`minio`)
+- **Expedientes**: CRUD completo + búsqueda + filtros + control de estados (`ABIERTO` → `EN_TRAMITE` → `CERRADO` → `ARCHIVADO`)
+- **Actuaciones**: registro cronológico de acciones legales vinculadas al expediente
+- **Documentos**: adjuntos con metadatos, hash SHA-256, descarga y storage configurable (`local` / `s3` / `minio`)
 
 ### Seguridad (RBAC + JWT)
 - Autenticación con JWT (access + refresh tokens)
@@ -24,63 +33,82 @@ Proyecto académico basado en el documento *"Desarrollo de un sistema full stack
 - Login éxito/fracaso, acceso denegado, CRUD, cambios de estado, descargas
 - Filtros por usuario, expediente, fecha, acción y resultado
 
+### Identidad visual — "Legal Slate & Gold"
+- Paleta navy profundo (`#1B2A4A`) + dorado (`#C8A951`) sobre fondo gris azulado (`#F4F6FA`)
+- Sidebar oscura con acentos dorados y avatar del usuario en footer
+- Tipografía moderna: Plus Jakarta Sans (títulos) + Inter (cuerpo) + DM Sans (métricas)
+- Gradientes sutiles en hero banner, iconos de KPI y arcos de gauges
+
 ---
 
 ## Stack Tecnológico
 
 | Capa | Tecnología |
 | --- | --- |
-| **Frontend** | React + TypeScript (Vite), Tailwind CSS, TanStack Query, Zustand, React Hook Form + Zod, React Router |
-| **Backend** | NestJS + TypeScript, Prisma ORM, JWT + bcrypt, OpenAPI/Swagger |
-| **Base de datos** | MySQL 8.4 |
-| **DevOps** | Docker + docker-compose, MinIO (S3 compatible), GitHub Actions (CI/CD) |
-| **Calidad** | ESLint + Prettier, Jest/Vitest, Supertest |
+| **Frontend** | React 19 + TypeScript (Vite 8), MUI v7 (Material UI), MUI X Charts, MUI X Data Grid, MUI Lab, TanStack React Query, React Hook Form + Zod, React Router 7, Notistack |
+| **Backend** | NestJS + TypeScript, Prisma ORM (adapter MariaDB), JWT + bcrypt + Passport, Helmet, Throttler, OpenAPI/Swagger |
+| **Base de datos** | MariaDB (MySQL compatible) via Docker |
+| **Storage** | MinIO (S3 compatible) / local / AWS S3 |
+| **DevOps** | Docker + Docker Compose, GitHub Actions (CI + CD), deploy remoto por SSH |
+| **Calidad** | ESLint, TypeScript strict, Jest, Supertest (e2e) |
 
 ---
 
 ## Arquitectura
 
-Arquitectura por capas con separación de responsabilidades:
+Monorepo con npm workspaces. Arquitectura por capas con separación de responsabilidades:
 
 ```
-Presentación (UI)  →  API (Controllers)  →  Aplicación (Casos de uso)  →  Dominio (Entidades)  →  Infraestructura (DB/Storage)
-                                    ↕ Cross-cutting: Auth/RBAC, Auditoría, Observabilidad
+Presentación (MUI + React)  →  API (NestJS Controllers)  →  Servicios  →  Prisma ORM  →  MariaDB / MinIO
+                                  ↕ Cross-cutting: Auth/RBAC Guards, Auditoría Interceptor, Throttling
 ```
 
 ---
 
-## Estructura del repositorio
+## 📂 Estructura del repositorio
 
 ```
-legal-case-mgmt/
-├── apps/
-│   ├── api/                    # Backend (NestJS + TypeScript)
+expedientes-especialidad/
+├── 📦 apps/
+│   ├── 🖥️ api/                        # Backend (NestJS)
 │   │   ├── src/
-│   │   │   ├── modules/        # auth, users, rbac, expedientes, actuaciones, documentos, auditoria, reportes, health
-│   │   │   └── shared/         # dto, errors, middleware, guards, interceptors, utils
-│   │   ├── prisma/             # schema + migraciones
-│   │   └── test/
-│   └── web/                    # Frontend (React + TypeScript + Vite)
+│   │   │   ├── 🧩 modules/            # auth, users, rbac, expedientes, actuaciones,
+│   │   │   │                          # documentos, auditoria, reportes, health
+│   │   │   ├── 🔧 shared/             # dto, errors, middleware, guards, interceptors, utils
+│   │   │   ├── 🗄️ prisma/             # PrismaService, adapter factory
+│   │   │   └── ⚙️ config/             # swagger, http-app config
+│   │   ├── 📐 prisma/                 # schema.prisma + migraciones + seed
+│   │   └── 🧪 test/                   # e2e tests
+│   └── 🌐 web/                        # Frontend (React + MUI + Vite)
 │       ├── src/
-│       │   ├── features/       # auth, expedientes, documentos, auditoria, admin
-│       │   ├── pages/
-│       │   ├── components/
-│       │   └── lib/            # helpers, api client, hooks
-│       └── public/
-├── packages/
-│   └── shared/                 # Tipos y contratos compartidos (DTOs, enums)
-├── scripts/
-│   └── db/                     # seed, reset
-├── .github/
-│   └── workflows/
-│       ├── ci.yml
-│       └── cd.yml
-├── docker-compose.yml
-├── docker-compose.prod.yml
-├── .env.example
-├── .env.prod.example
-├── .editorconfig
-└── package.json                # Monorepo (npm workspaces)
+│       │   ├── 🚀 app/                # router, providers, error-boundary
+│       │   ├── 🎯 features/
+│       │   │   ├── 🔐 auth/           # login, context, guards, hooks
+│       │   │   ├── 📐 layout/         # AppLayout (sidebar navy + appbar)
+│       │   │   ├── 📊 dashboard/      # greeting, stat-cards, gauges, donut,
+│       │   │   │                      # notificaciones, recordatorios, timeline
+│       │   │   ├── 📁 expedientes/    # listado, detalle, formularios
+│       │   │   └── 👥 admin/          # gestión usuarios, roles, permisos
+│       │   ├── 📄 pages/              # 12 páginas (dashboard, expedientes, actuaciones,
+│       │   │                          # documentos, auditoría, reportes, admin, login, 403)
+│       │   ├── 🎨 ui/
+│       │   │   ├── 🎭 theme/          # palette, typography, components, gradients
+│       │   │   └── 🧱 components/     # data-table, loading-state, empty-state,
+│       │   │                          # page-header, permission-guard, confirm-dialog
+│       │   └── 📚 lib/                # contracts, helpers, api client
+│       └── 🌍 public/
+├── 📦 packages/
+│   └── 🤝 shared/                     # Tipos y contratos compartidos
+├── 📜 scripts/
+│   ├── 🗄️ db/                         # mysql-init-shadow.sql
+│   └── 🚢 deploy/                     # remote-deploy.sh
+├── ⚡ .github/workflows/              # ci.yml + cd.yml
+├── 🐳 docker-compose.yml
+├── 🐳 docker-compose.prod.yml
+├── 🔑 .env.example
+├── 🔑 .env.prod.example
+├── 📏 .editorconfig
+└── 📦 package.json                    # Monorepo (npm workspaces)
 ```
 
 ---
@@ -88,9 +116,8 @@ legal-case-mgmt/
 ## Requisitos
 
 - **Node.js** >= 20 (LTS)
-- **MySQL** 8.4+
 - **npm** >= 10
-- **Docker** + Docker Compose (opcional, recomendado)
+- **Docker** + Docker Compose
 
 ---
 
@@ -111,28 +138,21 @@ docker compose up -d db minio minio-init
 ```
 
 El contenedor inicializa automáticamente una base `prisma_migrate_shadow` para migraciones de Prisma.
-MinIO queda disponible en:
 
-- API S3: `http://localhost:9000`
-- Consola: `http://localhost:9001`
+- **MariaDB**: `localhost:3306`
+- **MinIO API S3**: `http://localhost:9000`
+- **MinIO Consola**: `http://localhost:9001`
 
 ### 3. Backend
 
 ```bash
-# Instalar dependencias (desde la raíz del monorepo)
 npm install
-
-# Ejecutar migraciones
 npm run db:migrate
-
-# Seed de datos iniciales (roles, permisos, usuario admin)
-npm run db:seed
-
-# Iniciar en modo desarrollo
+npm run db:seed          # Roles, permisos, usuario admin
 npm run dev:api
 ```
 
-La API estará disponible en `http://localhost:4000` y Swagger en `http://localhost:4000/docs`.
+API: `http://localhost:4000` — Swagger: `http://localhost:4000/docs`
 
 ### 4. Frontend
 
@@ -140,7 +160,7 @@ La API estará disponible en `http://localhost:4000` y Swagger en `http://localh
 npm run dev:web
 ```
 
-La aplicación estará disponible en `http://localhost:5173`.
+App: `http://localhost:5173`
 
 ---
 
@@ -213,6 +233,22 @@ VITE_API_URL=http://localhost:4000
 - `GET /reportes/estados` — Reporte por estados
 - `GET /reportes/actividad` — Reporte de actividad
 
+### Dashboard
+- `GET /dashboard/summary` — KPIs consolidados con tendencias
+- `GET /dashboard/gauges` — Métricas calculadas para tacómetros
+
+### Notificaciones
+- `GET /notificaciones` — Lista de notificaciones del usuario
+- `POST /notificaciones/:id/read` — Marcar como leída
+
+### Recordatorios
+- `GET /recordatorios` — Recordatorios del usuario (agrupados por fecha)
+- `POST /recordatorios` — Crear recordatorio
+- `PATCH /recordatorios/:id` — Marcar completado / editar
+
+### Actividad
+- `GET /actividad/reciente` — Últimos 10 eventos con detalle para timeline
+
 ---
 
 ## CI/CD
@@ -262,6 +298,8 @@ Tablas principales:
 - **actuacion** — Acciones vinculadas a expedientes
 - **documento** — Archivos adjuntos con hash SHA-256
 - **audit_log** — Bitácora de auditoría
+- **notificacion** — Notificaciones por usuario (tipo, leída, recurso vinculado)
+- **recordatorio** — Recordatorios con fecha/hora, prioridad y estado de completado
 
 ---
 
@@ -279,15 +317,17 @@ Controles alineados a OWASP:
 
 ## Plan de implementación
 
-| Fase | Alcance | Progreso |
+| Fase | Alcance | Estado |
 | --- | --- | --- |
-| **Fase 0** — Preparación | Repo, Docker, CI, estándares | 0% → 10% |
-| **Fase 1** — Modelado | Schema Prisma, migraciones, seed | 10% → 25% |
-| **Fase 2** — Backend base | Auth, JWT, estructura modular, Swagger | 25% → 45% |
-| **Fase 3** — RBAC + Auditoría | Guards, interceptor auditoría, deny-by-default | 45% → 60% |
-| **Fase 4** — Dominio | Expedientes, actuaciones, documentos, estados | 60% → 80% |
-| **Fase 5** — Frontend | Login, dashboard, CRUD, admin, bitácora | 80% → 92% |
-| **Fase 6** — QA + Deploy | Reportes, tests, performance, CD, docs | 92% → 100% |
+| **Fase 0** — Preparación | Repo, Docker, CI, estándares | ✅ Completada |
+| **Fase 1** — Modelado | Schema Prisma, migraciones, seed | ✅ Completada |
+| **Fase 2** — Backend base | Auth, JWT, estructura modular, Swagger | ✅ Completada |
+| **Fase 3** — RBAC + Auditoría | Guards, interceptor auditoría, deny-by-default | ✅ Completada |
+| **Fase 4** — Dominio | Expedientes, actuaciones, documentos, estados | ✅ Completada |
+| **Fase 5** — Frontend | Login, dashboard, CRUD, admin, bitácora | ✅ Completada |
+| **Fase 6** — QA + Deploy | Reportes, tests, performance, CD, docs | ✅ Completada |
+| **v2** — Refactor UI | Migración a MUI v7, theme system, DataGrid | ✅ Completada |
+| **v3** — Dashboard moderno | Paleta Legal Slate & Gold, gauges, notificaciones, recordatorios, timeline, sidebar navy | ✅ Completada |
 
 ---
 
@@ -296,6 +336,16 @@ Controles alineados a OWASP:
 - **Commits**: Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`)
 - **Branching**: feature branches → PR → `develop` → `main`
 - **Versionado**: tags semánticos (`v0.1.0`, `v0.2.0`, ...)
+
+---
+
+## Screenshots
+
+### Dashboard
+El dashboard operativo muestra un banner de bienvenida contextual, 4 KPI cards con tendencia, gauges semicirculares tipo tacómetro, gráfico donut de estados, panel de notificaciones con badges, recordatorios tipo to-do y timeline de actividad reciente.
+
+### Sidebar
+Sidebar con fondo navy (`#1B2A4A`), iconos claros, item activo con borde dorado, secciones agrupadas (Operativo / Administración) y avatar del usuario en el footer.
 
 ---
 

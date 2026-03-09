@@ -96,6 +96,141 @@ describe('API (e2e)', () => {
       });
   });
 
+  it('/api/dashboard/summary (GET) without token returns 401', () => {
+    return request(app.getHttpServer())
+      .get('/api/dashboard/summary')
+      .expect(401);
+  });
+
+  it('/api/dashboard/summary (GET) with assistant token returns 200', () => {
+    return request(app.getHttpServer())
+      .get('/api/dashboard/summary')
+      .set('Authorization', `Bearer ${assistantToken}`)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body).toHaveProperty('kpis');
+        expect(res.body).toHaveProperty('remindersToday');
+        expect(res.body).toHaveProperty('unreadNotifications');
+      });
+  });
+
+  it('/api/dashboard/gauges (GET) with admin token returns 200', () => {
+    return request(app.getHttpServer())
+      .get('/api/dashboard/gauges')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200)
+      .expect((res) => {
+        const body = toRecord(res.body);
+        expect(body).toHaveProperty('gauges');
+        expect(Array.isArray(body.gauges)).toBe(true);
+      });
+  });
+
+  it('/api/actividad/reciente (GET) with assistant token returns 403', () => {
+    return request(app.getHttpServer())
+      .get('/api/actividad/reciente')
+      .set('Authorization', `Bearer ${assistantToken}`)
+      .expect(403);
+  });
+
+  it('/api/actividad/reciente (GET) with admin token returns 200', () => {
+    return request(app.getHttpServer())
+      .get('/api/actividad/reciente?limit=5')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200)
+      .expect((res) => {
+        const body = toRecord(res.body);
+        expect(body).toHaveProperty('data');
+        expect(Array.isArray(body.data)).toBe(true);
+      });
+  });
+
+  it('/api/notificaciones flow returns 200/201', async () => {
+    const adminUser = await prisma.usuario.findUnique({
+      where: { correo: ADMIN_EMAIL },
+      select: { id: true },
+    });
+
+    if (!adminUser) {
+      throw new Error('No se encontró usuario admin e2e');
+    }
+
+    await prisma.notificacion.create({
+      data: {
+        usuarioId: adminUser.id,
+        tipo: 'ALERTA',
+        titulo: 'Alerta e2e',
+        mensaje: 'Notificación de prueba',
+      },
+    });
+
+    const listBeforeRead = await request(app.getHttpServer())
+      .get('/api/notificaciones?take=10')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    const payload = toRecord(listBeforeRead.body);
+    const data = toObjectArray(payload.data);
+    expect(data.length).toBeGreaterThan(0);
+
+    const itemToRead =
+      data.find((item) => item.source === 'persisted') ?? data[0];
+    const notificationId = asString(itemToRead.id, 'notification id');
+
+    const markReadResponse = await request(app.getHttpServer())
+      .post(`/api/notificaciones/${notificationId}/read`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(201);
+
+    expect(markReadResponse.body).toHaveProperty('unreadCount');
+  });
+
+  it('/api/recordatorios flow returns 201/200/200', async () => {
+    const createResponse = await request(app.getHttpServer())
+      .post('/api/recordatorios')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        titulo: 'Recordatorio e2e',
+        descripcion: 'Seguimiento de expediente',
+        fechaHora: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        prioridad: 'URGENTE',
+      })
+      .expect(201);
+
+    const created = toRecord(createResponse.body);
+    const recordatorioId = asString(created.id, 'recordatorio id');
+
+    await request(app.getHttpServer())
+      .get('/api/recordatorios?take=20')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200)
+      .expect((res) => {
+        const body = toRecord(res.body);
+        expect(body).toHaveProperty('data');
+        expect(Array.isArray(body.data)).toBe(true);
+      });
+
+    await request(app.getHttpServer())
+      .patch(`/api/recordatorios/${recordatorioId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ completado: true })
+      .expect(200)
+      .expect((res) => {
+        expect(res.body).toHaveProperty('completado', true);
+      });
+  });
+
+  it('/api/recordatorios (POST) with assistant token returns 403', () => {
+    return request(app.getHttpServer())
+      .post('/api/recordatorios')
+      .set('Authorization', `Bearer ${assistantToken}`)
+      .send({
+        titulo: 'Recordatorio sin permiso',
+        fechaHora: new Date().toISOString(),
+      })
+      .expect(403);
+  });
+
   it('/api/auth login + refresh + me returns 201/201/200', async () => {
     const loginResponse = await request(app.getHttpServer())
       .post('/api/auth/login')
@@ -606,6 +741,13 @@ describe('API (e2e)', () => {
     const hashedPassword = await bcrypt.hash(E2E_PASSWORD, 10);
 
     const [
+      permisoDashboardRead,
+      permisoActividadRead,
+      permisoNotificacionRead,
+      permisoNotificacionUpdate,
+      permisoRecordatorioRead,
+      permisoRecordatorioCreate,
+      permisoRecordatorioUpdate,
       permisoUserManage,
       permisoExpedienteRead,
       permisoExpedienteCreate,
@@ -621,6 +763,62 @@ describe('API (e2e)', () => {
       permisoAuditRead,
       permisoRbacManage,
     ] = await Promise.all([
+      prisma.permiso.upsert({
+        where: { codigo: 'DASHBOARD_READ' },
+        update: { descripcion: 'Ver dashboard operativo' },
+        create: {
+          codigo: 'DASHBOARD_READ',
+          descripcion: 'Ver dashboard operativo',
+        },
+      }),
+      prisma.permiso.upsert({
+        where: { codigo: 'ACTIVIDAD_READ' },
+        update: { descripcion: 'Consultar actividad reciente' },
+        create: {
+          codigo: 'ACTIVIDAD_READ',
+          descripcion: 'Consultar actividad reciente',
+        },
+      }),
+      prisma.permiso.upsert({
+        where: { codigo: 'NOTIFICACION_READ' },
+        update: { descripcion: 'Ver notificaciones' },
+        create: {
+          codigo: 'NOTIFICACION_READ',
+          descripcion: 'Ver notificaciones',
+        },
+      }),
+      prisma.permiso.upsert({
+        where: { codigo: 'NOTIFICACION_UPDATE' },
+        update: { descripcion: 'Marcar notificaciones como leídas' },
+        create: {
+          codigo: 'NOTIFICACION_UPDATE',
+          descripcion: 'Marcar notificaciones como leídas',
+        },
+      }),
+      prisma.permiso.upsert({
+        where: { codigo: 'RECORDATORIO_READ' },
+        update: { descripcion: 'Ver recordatorios' },
+        create: {
+          codigo: 'RECORDATORIO_READ',
+          descripcion: 'Ver recordatorios',
+        },
+      }),
+      prisma.permiso.upsert({
+        where: { codigo: 'RECORDATORIO_CREATE' },
+        update: { descripcion: 'Crear recordatorios' },
+        create: {
+          codigo: 'RECORDATORIO_CREATE',
+          descripcion: 'Crear recordatorios',
+        },
+      }),
+      prisma.permiso.upsert({
+        where: { codigo: 'RECORDATORIO_UPDATE' },
+        update: { descripcion: 'Editar recordatorios' },
+        create: {
+          codigo: 'RECORDATORIO_UPDATE',
+          descripcion: 'Editar recordatorios',
+        },
+      }),
       prisma.permiso.upsert({
         where: { codigo: 'USER_MANAGE' },
         update: { descripcion: 'Administrar usuarios' },
@@ -764,6 +962,13 @@ describe('API (e2e)', () => {
 
     await prisma.rolPermiso.createMany({
       data: [
+        { rolId: adminRole.id, permisoId: permisoDashboardRead.id },
+        { rolId: adminRole.id, permisoId: permisoActividadRead.id },
+        { rolId: adminRole.id, permisoId: permisoNotificacionRead.id },
+        { rolId: adminRole.id, permisoId: permisoNotificacionUpdate.id },
+        { rolId: adminRole.id, permisoId: permisoRecordatorioRead.id },
+        { rolId: adminRole.id, permisoId: permisoRecordatorioCreate.id },
+        { rolId: adminRole.id, permisoId: permisoRecordatorioUpdate.id },
         { rolId: adminRole.id, permisoId: permisoUserManage.id },
         { rolId: adminRole.id, permisoId: permisoExpedienteRead.id },
         { rolId: adminRole.id, permisoId: permisoExpedienteCreate.id },
@@ -778,6 +983,7 @@ describe('API (e2e)', () => {
         { rolId: adminRole.id, permisoId: permisoDocumentoDownload.id },
         { rolId: adminRole.id, permisoId: permisoAuditRead.id },
         { rolId: adminRole.id, permisoId: permisoRbacManage.id },
+        { rolId: assistantRole.id, permisoId: permisoDashboardRead.id },
         { rolId: assistantRole.id, permisoId: permisoExpedienteRead.id },
       ],
       skipDuplicates: true,
@@ -865,6 +1071,12 @@ describe('API (e2e)', () => {
       await prisma.usuarioRol.deleteMany({
         where: { usuarioId: { in: userIds } },
       });
+      await prisma.notificacion.deleteMany({
+        where: { usuarioId: { in: userIds } },
+      });
+      await prisma.recordatorio.deleteMany({
+        where: { usuarioId: { in: userIds } },
+      });
       await prisma.auditLog.deleteMany({
         where: { usuarioId: { in: userIds } },
       });
@@ -896,6 +1108,12 @@ describe('API (e2e)', () => {
 
     if (createdUserIds.length > 0) {
       await prisma.usuarioRol.deleteMany({
+        where: { usuarioId: { in: createdUserIds } },
+      });
+      await prisma.notificacion.deleteMany({
+        where: { usuarioId: { in: createdUserIds } },
+      });
+      await prisma.recordatorio.deleteMany({
         where: { usuarioId: { in: createdUserIds } },
       });
       await prisma.auditLog.deleteMany({
