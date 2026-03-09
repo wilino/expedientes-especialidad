@@ -213,7 +213,10 @@ describe('API (e2e)', () => {
         const userWithRoles = toRecord(res.body);
         const roles = toObjectArray(userWithRoles.roles);
         const hasRole = roles.some((role) => {
-          const roleInfo = toRecord(role.rol);
+          const roleInfo =
+            typeof role.rol === 'object' && role.rol !== null
+              ? toRecord(role.rol)
+              : toRecord(role);
           return roleInfo.nombre === roleName;
         });
         expect(hasRole).toBe(true);

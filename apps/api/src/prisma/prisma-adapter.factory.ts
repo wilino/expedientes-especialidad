@@ -6,6 +6,13 @@ function parsePort(rawPort: string): number {
   return Number.isFinite(port) && port > 0 ? port : 3306;
 }
 
+function normalizeHost(rawHost: string): string {
+  if (rawHost.startsWith('[') && rawHost.endsWith(']')) {
+    return rawHost.slice(1, -1);
+  }
+  return rawHost;
+}
+
 export function createPrismaAdapterFromDatabaseUrl(
   databaseUrl = process.env.DATABASE_URL,
 ): PrismaMariaDb {
@@ -31,7 +38,7 @@ export function createPrismaAdapterFromDatabaseUrl(
   const database = parsed.pathname.replace(/^\/+/, '') || undefined;
 
   return new PrismaMariaDb({
-    host: parsed.hostname,
+    host: normalizeHost(parsed.hostname),
     port: parsePort(parsed.port),
     user,
     password,
