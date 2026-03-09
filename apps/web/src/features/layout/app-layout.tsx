@@ -24,26 +24,81 @@ import GavelOutlinedIcon from '@mui/icons-material/GavelOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
-import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
+import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined';
+import SecurityOutlinedIcon from '@mui/icons-material/SecurityOutlined';
 import { Link as RouterLink, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/use-auth';
+import { AccessRules, type AccessRule } from '../auth/access-rules';
+import { usePermissions } from '../auth/use-permissions';
 
 const DRAWER_WIDTH = 272;
 
+interface NavItem {
+  to: string;
+  label: string;
+  end?: boolean;
+  icon: typeof DashboardOutlinedIcon;
+  accessRule?: AccessRule;
+}
+
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', end: true, icon: DashboardOutlinedIcon },
-  { to: '/expedientes', label: 'Expedientes', icon: FolderOpenOutlinedIcon },
-  { to: '/actuaciones', label: 'Actuaciones', icon: GavelOutlinedIcon },
-  { to: '/documentos', label: 'Documentos', icon: DescriptionOutlinedIcon },
-  { to: '/auditoria', label: 'Auditoría', icon: FactCheckOutlinedIcon },
-  { to: '/reportes', label: 'Reportes', icon: BarChartOutlinedIcon },
-  { to: '/admin', label: 'Admin', icon: AdminPanelSettingsOutlinedIcon },
-];
+  {
+    to: '/expedientes',
+    label: 'Expedientes',
+    icon: FolderOpenOutlinedIcon,
+    accessRule: AccessRules.expedientes,
+  },
+  {
+    to: '/actuaciones',
+    label: 'Actuaciones',
+    icon: GavelOutlinedIcon,
+    accessRule: AccessRules.actuaciones,
+  },
+  {
+    to: '/documentos',
+    label: 'Documentos',
+    icon: DescriptionOutlinedIcon,
+    accessRule: AccessRules.documentos,
+  },
+  {
+    to: '/auditoria',
+    label: 'Auditoría',
+    icon: FactCheckOutlinedIcon,
+    accessRule: AccessRules.auditoria,
+  },
+  {
+    to: '/reportes',
+    label: 'Reportes',
+    icon: BarChartOutlinedIcon,
+    accessRule: AccessRules.reportes,
+  },
+  {
+    to: '/usuarios',
+    label: 'Usuarios',
+    icon: GroupOutlinedIcon,
+    accessRule: AccessRules.adminUsers,
+  },
+  {
+    to: '/roles',
+    label: 'Roles',
+    icon: SecurityOutlinedIcon,
+    accessRule: AccessRules.adminRoles,
+  },
+] satisfies NavItem[];
 
 export function AppLayout() {
   const { user, logout } = useAuth();
+  const { canAll, canAny } = usePermissions();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const hasAccess = (rule?: AccessRule) => {
+    if (!rule) {
+      return true;
+    }
+    return rule.requireAll ? canAll(rule.permissions) : canAny(rule.permissions);
+  };
+  const visibleNavItems = NAV_ITEMS.filter((item) => hasAccess(item.accessRule));
 
   const pathSegments = location.pathname.split('/').filter(Boolean);
   const breadcrumbs =
@@ -51,7 +106,7 @@ export function AppLayout() {
       ? [{ to: '/', label: 'Dashboard', isLast: true }]
       : pathSegments.map((segment, index) => {
           const to = `/${pathSegments.slice(0, index + 1).join('/')}`;
-          const navItem = NAV_ITEMS.find((item) => item.to === to);
+          const navItem = visibleNavItems.find((item) => item.to === to);
           return {
             to,
             label:
@@ -73,7 +128,7 @@ export function AppLayout() {
       </Typography>
       <Divider sx={{ mb: 1 }} />
       <List disablePadding>
-        {NAV_ITEMS.map((item) => {
+        {visibleNavItems.map((item) => {
           const isActive = item.end
             ? location.pathname === item.to
             : location.pathname.startsWith(item.to);
