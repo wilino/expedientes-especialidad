@@ -22,8 +22,12 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import {
+  CreateUserDto,
+  UpdateUserDto,
+  UserAdminResponseDto,
+  UsersListResponseDto,
+} from './dto';
 import { PaginationDto } from '../../shared/dto/pagination.dto';
 import { ApiStandardErrorResponses } from '../../shared/swagger';
 import { ErrorResponseDto } from '../../shared/dto';
@@ -40,7 +44,10 @@ export class UsersController {
 
   @Post()
   @ApiOperation({ summary: 'Crear usuario' })
-  @ApiCreatedResponse({ description: 'Usuario creado correctamente' })
+  @ApiCreatedResponse({
+    description: 'Usuario creado correctamente',
+    type: UserAdminResponseDto,
+  })
   @ApiConflictResponse({
     description: 'Correo ya registrado',
     type: ErrorResponseDto,
@@ -51,7 +58,10 @@ export class UsersController {
 
   @Get()
   @ApiOperation({ summary: 'Listar usuarios' })
-  @ApiOkResponse({ description: 'Listado paginado de usuarios' })
+  @ApiOkResponse({
+    description: 'Listado paginado de usuarios',
+    type: UsersListResponseDto,
+  })
   findAll(@Query() pagination: PaginationDto) {
     return this.usersService.findAll(pagination.skip, pagination.take);
   }
@@ -59,31 +69,40 @@ export class UsersController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener usuario por ID' })
   @ApiParam({ name: 'id', type: String })
-  @ApiOkResponse({ description: 'Usuario encontrado' })
+  @ApiOkResponse({
+    description: 'Usuario encontrado',
+    type: UserAdminResponseDto,
+  })
   @ApiNotFoundResponse({
     description: 'Usuario no encontrado',
     type: ErrorResponseDto,
   })
   findById(@Param('id', ParseUUIDPipe) id: string) {
-    return this.usersService.findById(id);
+    return this.usersService.findByIdAdmin(id);
   }
 
   @Get(':id/roles')
   @ApiOperation({ summary: 'Obtener usuario con roles y permisos' })
   @ApiParam({ name: 'id', type: String })
-  @ApiOkResponse({ description: 'Usuario con roles y permisos' })
+  @ApiOkResponse({
+    description: 'Usuario con roles y permisos',
+    type: UserAdminResponseDto,
+  })
   @ApiNotFoundResponse({
     description: 'Usuario no encontrado',
     type: ErrorResponseDto,
   })
   findByIdWithRoles(@Param('id', ParseUUIDPipe) id: string) {
-    return this.usersService.findByIdWithRoles(id);
+    return this.usersService.findByIdWithRolesAdmin(id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar usuario' })
   @ApiParam({ name: 'id', type: String })
-  @ApiOkResponse({ description: 'Usuario actualizado' })
+  @ApiOkResponse({
+    description: 'Usuario actualizado',
+    type: UserAdminResponseDto,
+  })
   @ApiNotFoundResponse({
     description: 'Usuario no encontrado',
     type: ErrorResponseDto,
@@ -95,7 +114,10 @@ export class UsersController {
   @Patch(':id/toggle-estado')
   @ApiOperation({ summary: 'Activar/desactivar usuario' })
   @ApiParam({ name: 'id', type: String })
-  @ApiOkResponse({ description: 'Estado actualizado' })
+  @ApiOkResponse({
+    description: 'Estado actualizado',
+    type: UserAdminResponseDto,
+  })
   @ApiNotFoundResponse({
     description: 'Usuario no encontrado',
     type: ErrorResponseDto,
